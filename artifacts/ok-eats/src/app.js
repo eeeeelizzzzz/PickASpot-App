@@ -335,6 +335,7 @@ let state = {
     season: '',
   },
   results: null,
+  top10Pool: null,
   listSearch: '',
   expandedFilters: false,
 };
@@ -400,11 +401,15 @@ function findRecommendations() {
   // Sort descending
   pool.sort((a, b) => b._score - a._score);
 
-  // Top 10
-  const top10 = pool.slice(0, 10);
+  // Top 10 — store for Spin Again
+  state.top10Pool = pool.slice(0, 10);
 
-  // Random 3 from top 10
-  const shuffled = top10.sort(() => Math.random() - 0.5);
+  return pickThreeFromPool();
+}
+
+function pickThreeFromPool() {
+  const pool = state.top10Pool || [];
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(3, shuffled.length));
 }
 
@@ -470,10 +475,14 @@ function renderDiscover() {
         </div>`;
     } else {
       const cards = results.map((r, i) => renderResultCard(r, i)).join('');
+      const poolSize = (state.top10Pool || []).length;
       resultsHtml = `
         <div style="padding:0 20px 8px;">
-          <div style="font-size:13px;color:#8E8E93;font-weight:500;margin-bottom:12px;padding-top:4px;">
-            3 picks from the top ${Math.min(10, getPoolSize())} matches
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:4px;">
+            <div style="font-size:13px;color:#8E8E93;font-weight:500;">3 picks from top ${poolSize}</div>
+            <button onclick="handleSpinAgain()" style="display:flex;align-items:center;gap:5px;background:white;border:none;border-radius:10px;padding:7px 13px;font-size:13px;font-weight:600;color:#007AFF;font-family:inherit;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+              <span id="spin-icon" style="display:inline-block;font-size:14px;transition:transform 0.45s cubic-bezier(0.34,1.56,0.64,1);">🎲</span> Spin Again
+            </button>
           </div>
           ${cards}
         </div>`;
@@ -845,12 +854,25 @@ window.handleFindFood = function() {
   const results = findRecommendations();
   state.results = results;
   renderDiscover();
-  // Scroll to results
   requestAnimationFrame(() => {
     const pg = document.getElementById('page-discover');
-    const target = pg.scrollHeight;
-    pg.scrollTo({ top: target, behavior: 'smooth' });
+    pg.scrollTo({ top: pg.scrollHeight, behavior: 'smooth' });
   });
+};
+
+window.handleSpinAgain = function() {
+  // Animate the dice icon
+  const icon = document.getElementById('spin-icon');
+  if (icon) {
+    icon.style.transform = 'rotate(360deg) scale(1.3)';
+    setTimeout(() => { icon.style.transform = ''; }, 450);
+  }
+  state.results = pickThreeFromPool();
+  // Re-render just the results area without losing scroll position
+  const pg = document.getElementById('page-discover');
+  const scrollY = pg.scrollTop;
+  renderDiscover();
+  requestAnimationFrame(() => { pg.scrollTop = scrollY; });
 };
 
 window.handleListSearch = function(val) {
