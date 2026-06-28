@@ -46,12 +46,20 @@ const LOCATIONS = ['OKC', 'Norman', 'Edmond', 'Yukon', 'Guthrie', 'Tulsa', 'Stil
 const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
 
 const ALL_TAGS = [
-  'Fine Dining', 'Chef Driven', 'International', 'Patio',
-  'Great Cocktails', 'Brunch', 'Worth the Drive', 'Tasting Menu',
-  'Seasonal Menu', 'Hidden Gem', 'Date Night', 'Casual',
-  'Seafood', 'Steakhouse', 'BBQ', 'Farm to Table', 'Late Night',
-  'Outdoor Dining', 'Local Favorite', 'Vegetarian Friendly',
-  'Takeout / Delivery',
+  // Style / Experience
+  'Fine Dining', 'Upscale Casual', 'Casual', 'Chef Driven',
+  'Tasting Menu', 'Updated Menu', 'Reservations Recommended',
+  'Priority', 'OkieEats List',
+  // Food Type
+  'Asian', 'Italian', 'Mexican', 'Sushi', 'Seafood',
+  'Steakhouse', 'BBQ', 'Burgers', 'Sandwiches',
+  'Farm to Table', 'Brunch', 'Breakfast',
+  // Setting
+  'Patio / Outdoor', 'Great Cocktails',
+  // Practical
+  'Vegetarian Friendly', 'Takeout / Delivery', 'Fast Service',
+  // Distance
+  'Nearby', 'Short Drive', 'A Trip',
 ];
 
 const TIER_COLORS = {
@@ -365,7 +373,6 @@ let state = {
   filters: {
     locations: [],
     tags: [],
-    season: '',
   },
   results: null,
   top10Pool: null,
@@ -400,7 +407,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function scoreRestaurant(r, season) {
+function scoreRestaurant(r) {
   const t = today();
   let score = 0;
   // +5 never visited
@@ -409,15 +416,15 @@ function scoreRestaurant(r, season) {
   if (daysBetween(r.dateSaved, t) > 180) score += 3;
   // +2 acclaimed
   if (r.acclaimed) score += 2;
-  // +2 season match
-  if (season && r.bestSeasons && r.bestSeasons.includes(season)) score += 2;
+  // +3 priority tag
+  if ((r.tags || []).includes('Priority')) score += 3;
   // -5 visited in last 90 days
   if (r.lastVisited && daysBetween(r.lastVisited, t) < 90) score -= 5;
   return score;
 }
 
 function findRecommendations() {
-  const { locations, tags, season } = state.filters;
+  const { locations, tags } = state.filters;
   let pool = state.restaurants.slice();
 
   // Filter
@@ -429,7 +436,7 @@ function findRecommendations() {
   }
 
   // Score
-  pool = pool.map(r => ({ ...r, _score: scoreRestaurant(r, season) }));
+  pool = pool.map(r => ({ ...r, _score: scoreRestaurant(r) }));
 
   // Sort descending
   pool.sort((a, b) => b._score - a._score);
@@ -488,11 +495,7 @@ function renderDiscover() {
     return `<button class="pill ${on ? 'pill-on' : 'pill-off'}" onclick="toggleTag('${escHtml(tag)}')">${escHtml(tag)}</button>`;
   }).join('');
 
-  const seasonOptions = ['<option value="">Any Season</option>', ...SEASONS.map(s =>
-    `<option value="${s}" ${filters.season === s ? 'selected' : ''}>${s}</option>`
-  )].join('');
-
-  const activeCount = filters.locations.length + filters.tags.length + (filters.season ? 1 : 0);
+  const activeCount = filters.locations.length + filters.tags.length;
   const activeLabel = activeCount > 0 ? `<span style="background:#007AFF;color:white;border-radius:100px;padding:0 6px;font-size:11px;font-weight:700;margin-left:4px;">${activeCount}</span>` : '';
 
   let resultsHtml = '';
@@ -542,11 +545,6 @@ function renderDiscover() {
         <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;">
           ${locationPills}
         </div>
-
-        <div style="font-size:12px;font-weight:700;color:#8E8E93;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Season</div>
-        <select class="ios-select" onchange="setSeason(this.value)" style="margin-bottom:16px;">
-          ${seasonOptions}
-        </select>
 
         <div style="font-size:12px;font-weight:700;color:#8E8E93;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Tags</div>
         <div style="display:flex;flex-wrap:wrap;gap:7px;">
@@ -871,14 +869,13 @@ window.toggleTag = function(tag) {
   renderDiscover();
 };
 
-window.setSeason = function(val) {
-  state.filters.season = val;
+window._removedSetSeason = function(val) {
   state.results = null;
   renderDiscover();
 };
 
 window.clearFilters = function() {
-  state.filters = { locations: [], tags: [], season: '' };
+  state.filters = { locations: [], tags: [] };
   state.results = null;
   renderDiscover();
 };
@@ -938,11 +935,6 @@ window.openLogVisit = function() {
       <input type="checkbox" name="lv-tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
       ${escHtml(tag)}
     </label>`).join('');
-  const seasonChecks   = SEASONS.map(s => `
-    <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
-      <input type="checkbox" name="lv-seasons" value="${escHtml(s)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
-      ${escHtml(s)}
-    </label>`).join('');
 
   root.innerHTML = `
     <div class="modal-overlay" onclick="closeModal()">
@@ -993,12 +985,6 @@ window.openLogVisit = function() {
             <div class="ios-card" style="padding:0 12px;">${tagCheckboxes}</div>
           </div>
 
-          <!-- ── Best Seasons ── -->
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Best Seasons</div>
-            <div class="ios-card" style="padding:4px 12px;">${seasonChecks}</div>
-          </div>
-
           <!-- ── Visit Details ── -->
           <div>
             <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Visit Details</div>
@@ -1046,8 +1032,6 @@ window.submitLogVisit = function() {
   const acclaimed   = document.getElementById('lv-acclaimed').checked;
   const lastVisited = document.getElementById('lv-visited').value || today();
   const tags        = [...document.querySelectorAll('input[name="lv-tags"]:checked')].map(e => e.value);
-  const bestSeasons = [...document.querySelectorAll('input[name="lv-seasons"]:checked')].map(e => e.value);
-
   const food    = parseInt(document.getElementById('lv-food')?.value)    || null;
   const vibe    = parseInt(document.getElementById('lv-vibe')?.value)    || null;
   const service = parseInt(document.getElementById('lv-service')?.value) || null;
@@ -1064,7 +1048,6 @@ window.submitLogVisit = function() {
     acclaimed,
     dateSaved:   today(),
     lastVisited,
-    bestSeasons,
     ratings: { food, vibe, service, parking: parking || null, cost: cost || null },
     notes,
   };
@@ -1124,10 +1107,6 @@ window.openAddRestaurant = function() {
             <div class="ios-card" style="padding:4px 12px;">${tagCheckboxes}</div>
           </div>
           <div style="margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Best Seasons</div>
-            <div class="ios-card" style="padding:4px 12px;">${seasonChecks}</div>
-          </div>
-          <div style="margin-bottom:12px;">
             <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Acclaimed</div>
             <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:white;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;">
               <input id="add-acclaimed" type="checkbox" style="width:17px;height:17px;accent-color:#007AFF;" />
@@ -1154,8 +1133,6 @@ window.submitAddRestaurant = function() {
   const acclaimed = document.getElementById('add-acclaimed').checked;
   const lastVisited = document.getElementById('add-visited').value || null;
   const tags = [...document.querySelectorAll('input[name="tags"]:checked')].map(el => el.value);
-  const bestSeasons = [...document.querySelectorAll('input[name="seasons"]:checked')].map(el => el.value);
-
   const newR = {
     id: genId(),
     name,
@@ -1165,7 +1142,6 @@ window.submitAddRestaurant = function() {
     acclaimed,
     dateSaved: today(),
     lastVisited,
-    bestSeasons,
   };
   state.restaurants.push(newR);
   saveRestaurants();
@@ -1186,10 +1162,7 @@ window.openRestaurantDetail = function(id) {
     const c = tagColor(tag);
     return `<span class="badge-tag" style="background:${c.bg};color:${c.text};">${escHtml(tag)}</span>`;
   }).join('');
-  const seasonPills = (r.bestSeasons || []).map(s =>
-    `<span class="badge-tag" style="background:#E3F2FD;color:#0D47A1;">${escHtml(s)}</span>`
-  ).join('');
-  const score = scoreRestaurant(r, state.filters.season);
+  const score = scoreRestaurant(r);
   const scoreColor = score >= 7 ? '#34C759' : score >= 4 ? '#007AFF' : score >= 0 ? '#FF9500' : '#FF3B30';
   const tierOptionHtml = TIERS.map(t =>
     `<option value="${escHtml(t)}" ${r.tier === t ? 'selected' : ''}>${escHtml(t)}</option>`
@@ -1232,10 +1205,6 @@ window.openRestaurantDetail = function(id) {
             <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Tags</div>
               <div style="display:flex;flex-wrap:wrap;gap:5px;">${tagBadges || '<span style="font-size:13px;color:#C7C7CC;">No tags</span>'}</div>
-            </div>
-            <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
-              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Best Seasons</div>
-              <div style="display:flex;flex-wrap:wrap;gap:5px;">${seasonPills || '<span style="font-size:13px;color:#C7C7CC;">Not specified</span>'}</div>
             </div>
             <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">Visit History</div>
