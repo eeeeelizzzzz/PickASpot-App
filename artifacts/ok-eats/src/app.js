@@ -18,6 +18,7 @@ const ALL_TAGS = [
   'Seasonal Menu', 'Hidden Gem', 'Date Night', 'Casual',
   'Seafood', 'Steakhouse', 'BBQ', 'Farm to Table', 'Late Night',
   'Outdoor Dining', 'Local Favorite', 'Vegetarian Friendly',
+  'Takeout / Delivery',
 ];
 
 const TIER_COLORS = {
