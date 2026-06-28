@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="OK Eats" />
+  <meta name="theme-color" content="#F2F2F7" />
+  <meta name="description" content="Oklahoma Restaurant Recommendations for couples" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>OK Eats</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      background: #F2F2F7;
+      overscroll-behavior: none;
+    }
+    :root {
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: #F2F2F7;
+      overflow: hidden;
+      position: relative;
+    }
+    .page {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 16px;
+    }
+    .page::-webkit-scrollbar { display: none; }
+    .tab-bar {
+      background: rgba(242,242,247,0.94);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-top: 0.5px solid rgba(0,0,0,0.14);
+      padding-bottom: var(--safe-bottom);
+      flex-shrink: 0;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.16s cubic-bezier(0.34,1.56,0.64,1);
+      user-select: none;
+      white-space: nowrap;
+      border: none;
+      letter-spacing: -0.1px;
+    }
+    .pill:active { transform: scale(0.91); }
+    .pill-on  { background: #007AFF; color: white; box-shadow: 0 2px 8px rgba(0,122,255,0.28); }
+    .pill-off { background: white; color: #3C3C43; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    @keyframes slideUp {
+      from { opacity:0; transform: translateY(30px) scale(0.95); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .slide-up { animation: slideUp 0.44s cubic-bezier(0.34,1.56,0.64,1) both; }
+    .d1 { animation-delay: 0.05s; }
+    .d2 { animation-delay: 0.11s; }
+    .d3 { animation-delay: 0.17s; }
+
+    .find-btn {
+      background: linear-gradient(145deg, #007AFF 0%, #0055D4 100%);
+      color: white;
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      padding: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.17s cubic-bezier(0.34,1.56,0.64,1);
+      user-select: none;
+      width: 100%;
+      border: none;
+      box-shadow: 0 6px 20px rgba(0,122,255,0.36);
+    }
+    .find-btn:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(0,122,255,0.2); }
+
+    .ios-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .ios-card-lg {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      overflow: hidden;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      animation: fadeIn 0.2s ease;
+      max-width: 430px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .sheet {
+      background: #F2F2F7;
+      border-radius: 16px 16px 0 0;
+      animation: sheetUp 0.36s cubic-bezier(0.32,0.72,0,1);
+      max-height: 92dvh;
+      overflow-y: auto;
+      padding-bottom: calc(var(--safe-bottom) + 24px);
+    }
+    .sheet::-webkit-scrollbar { display: none; }
+    .handle {
+      width: 36px; height: 4px;
+      background: rgba(60,60,67,0.18);
+      border-radius: 2px;
+      margin: 10px auto 4px;
+    }
+    .ios-input {
+      background: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      width: 100%;
+      outline: none;
+      color: #000;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .ios-input::placeholder { color: #AEAEB2; }
+    .ios-select {
+      background: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      width: 100%;
+      outline: none;
+      color: #000;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23AEAEB2' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .list-row {
+      background: white;
+      display: flex;
+      align-items: center;
+      padding: 13px 16px;
+      cursor: pointer;
+      transition: background 0.1s ease;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .list-row:active { background: #F2F2F7; }
+    .list-row + .list-row { border-top: 0.5px solid #E5E5EA; }
+    .tab-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 9px 0 8px;
+      flex: 1;
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: opacity 0.12s;
+    }
+    .search-wrap {
+      background: rgba(118,118,128,0.12);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+    }
+    .search-wrap input {
+      background: none; border: none; outline: none;
+      font-size: 15px; font-family: inherit; flex: 1; color: #000;
+    }
+    .search-wrap input::placeholder { color: #8E8E93; }
+    .badge-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      white-space: nowrap;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8E8E93;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      padding: 18px 20px 6px;
+    }
+    .score-circle {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="page-discover" class="page" style="padding-top: var(--safe-top);"></div>
+    <div id="page-list" class="page" style="display:none; padding-top: var(--safe-top);"></div>
+    <div class="tab-bar">
+      <div style="display:flex;">
+        <button class="tab-btn" id="tab-discover" onclick="switchTab('discover')">
+          <span style="font-size:22px;">🍽️</span>
+          <span id="tab-label-discover" style="font-size:10px;font-weight:600;color:#007AFF;">Discover</span>
+        </button>
+        <button class="tab-btn" id="tab-list" onclick="switchTab('list')">
+          <span style="font-size:22px;">📋</span>
+          <span id="tab-label-list" style="font-size:10px;font-weight:600;color:#8E8E93;">My List</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
