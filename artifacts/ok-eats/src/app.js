@@ -589,14 +589,17 @@ function renderHistory() {
 
   if (visited.length === 0) {
     el.innerHTML = `
-      <div style="padding:20px 20px 12px;">
-        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
-        <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+      <div style="padding:20px 20px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
+          <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+        </div>
+        <button onclick="openLogVisit()" style="background:#007AFF;color:white;border:none;border-radius:11px;padding:9px 15px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-top:4px;box-shadow:0 3px 10px rgba(0,122,255,0.28);">+ Log Visit</button>
       </div>
       <div style="padding:40px 20px;text-align:center;">
         <div style="font-size:52px;margin-bottom:14px;">🍴</div>
         <div style="font-size:18px;font-weight:600;color:#000;margin-bottom:6px;">No visits yet</div>
-        <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Mark restaurants as visited<br/>and they'll appear here.</div>
+        <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Tap <strong>+ Log Visit</strong> to add a place<br/>you've already been to.</div>
       </div>`;
     return;
   }
@@ -656,9 +659,12 @@ function renderHistory() {
   }
 
   el.innerHTML = `
-    <div style="padding:20px 20px 12px;">
-      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
-      <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+    <div style="padding:20px 20px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
+        <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+      </div>
+      <button onclick="openLogVisit()" style="background:#007AFF;color:white;border:none;border-radius:11px;padding:9px 15px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-top:4px;box-shadow:0 3px 10px rgba(0,122,255,0.28);">+ Log Visit</button>
     </div>
 
     <div style="padding:0 20px 16px;">
@@ -863,6 +869,155 @@ window.markVisitedId = function(id) {
   saveRestaurants();
   renderDiscover();
   showToast(`${r.name} marked as visited today!`);
+};
+
+// ─── Log a Visit Modal ────────────────────────────────────────────────────────
+
+window.openLogVisit = function() {
+  const root = document.getElementById('modal-root');
+  const tierOptions    = TIERS.map(t     => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
+  const locationOptions= LOCATIONS.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  const tagCheckboxes  = ALL_TAGS.map(tag => `
+    <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;border-bottom:0.5px solid #F5F5F5;">
+      <input type="checkbox" name="lv-tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
+      ${escHtml(tag)}
+    </label>`).join('');
+  const seasonChecks   = SEASONS.map(s => `
+    <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
+      <input type="checkbox" name="lv-seasons" value="${escHtml(s)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
+      ${escHtml(s)}
+    </label>`).join('');
+
+  root.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="handle"></div>
+
+        <div style="padding:8px 20px 4px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:17px;font-weight:700;color:#000;">Log a Visit</div>
+            <div style="font-size:12px;color:#8E8E93;margin-top:1px;">Add a restaurant you've already been to</div>
+          </div>
+          <button onclick="closeModal()" style="background:rgba(118,118,128,0.18);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#8E8E93;flex-shrink:0;">✕</button>
+        </div>
+
+        <div style="padding:14px 20px;display:flex;flex-direction:column;gap:20px;">
+
+          <!-- ── About the Place ── -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">About the Place</div>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Name *</div>
+                <input id="lv-name" class="ios-input" type="text" placeholder="Restaurant name" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Location</div>
+                  <select id="lv-location" class="ios-select">${locationOptions}</select>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Tier</div>
+                  <select id="lv-tier" class="ios-select">${tierOptions}</select>
+                </div>
+              </div>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:white;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;">
+                <input id="lv-acclaimed" type="checkbox" style="width:17px;height:17px;accent-color:#007AFF;" />
+                <div>
+                  <div style="font-size:14px;font-weight:600;color:#000;">Acclaimed ⭐</div>
+                  <div style="font-size:11px;color:#8E8E93;">James Beard / critically celebrated</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- ── Tags ── -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Tags</div>
+            <div class="ios-card" style="padding:0 12px;">${tagCheckboxes}</div>
+          </div>
+
+          <!-- ── Best Seasons ── -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Best Seasons</div>
+            <div class="ios-card" style="padding:4px 12px;">${seasonChecks}</div>
+          </div>
+
+          <!-- ── Visit Details ── -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Visit Details</div>
+            <div class="ios-card" style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Date Visited</div>
+                <input id="lv-visited" class="ios-input" type="date" value="${today()}" max="${today()}" />
+              </div>
+              <div style="height:0.5px;background:#F2F2F7;"></div>
+              ${starPicker('lv-food',    null, 'Food')}
+              ${starPicker('lv-vibe',    null, 'Vibe')}
+              ${starPicker('lv-service', null, 'Service / Experience')}
+              <div style="height:0.5px;background:#F2F2F7;"></div>
+              ${pillPicker('lv-parking', ['Easy','Street','Paid','Difficult'], null, 'Parking')}
+              ${pillPicker('lv-cost',    ['$','$$','$$$','$$$$'],              null, 'Cost')}
+              <div style="height:0.5px;background:#F2F2F7;"></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:7px;">Notes</div>
+                <textarea id="lv-notes" placeholder="Dishes to remember, vibes, memories…" style="width:100%;min-height:80px;background:#F8F8F8;border:none;border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;color:#000;resize:none;outline:none;line-height:1.5;"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="submitLogVisit()" style="background:linear-gradient(145deg,#007AFF,#0055D4);color:white;border:none;border-radius:14px;padding:17px;font-size:17px;font-weight:600;font-family:inherit;width:100%;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.3);">
+            Save Visit
+          </button>
+
+        </div>
+      </div>
+    </div>`;
+};
+
+window.submitLogVisit = function() {
+  const name = document.getElementById('lv-name').value.trim();
+  if (!name) {
+    const el = document.getElementById('lv-name');
+    el.style.outline = '2px solid #FF3B30';
+    el.focus();
+    setTimeout(() => { el.style.outline = 'none'; }, 1800);
+    return;
+  }
+
+  const location    = document.getElementById('lv-location').value;
+  const tier        = document.getElementById('lv-tier').value;
+  const acclaimed   = document.getElementById('lv-acclaimed').checked;
+  const lastVisited = document.getElementById('lv-visited').value || today();
+  const tags        = [...document.querySelectorAll('input[name="lv-tags"]:checked')].map(e => e.value);
+  const bestSeasons = [...document.querySelectorAll('input[name="lv-seasons"]:checked')].map(e => e.value);
+
+  const food    = parseInt(document.getElementById('lv-food')?.value)    || null;
+  const vibe    = parseInt(document.getElementById('lv-vibe')?.value)    || null;
+  const service = parseInt(document.getElementById('lv-service')?.value) || null;
+  const parking = document.getElementById('lv-parking')?.value || null;
+  const cost    = document.getElementById('lv-cost')?.value    || null;
+  const notes   = (document.getElementById('lv-notes')?.value || '').trim();
+
+  const newR = {
+    id: genId(),
+    name,
+    location,
+    tier,
+    tags,
+    acclaimed,
+    dateSaved:   today(),
+    lastVisited,
+    bestSeasons,
+    ratings: { food, vibe, service, parking: parking || null, cost: cost || null },
+    notes,
+  };
+
+  state.restaurants.push(newR);
+  saveRestaurants();
+  closeModal();
+  renderHistory();
+  showToast(`${name} logged!`);
 };
 
 // ─── Add Restaurant Modal ─────────────────────────────────────────────────────
