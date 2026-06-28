@@ -633,6 +633,14 @@ function renderHistory() {
               ${r.acclaimed ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
             </div>
             <div style="font-size:12px;color:#8E8E93;">📍 ${escHtml(r.location)}</div>
+            ${(r.ratings && (r.ratings.food || r.ratings.vibe || r.ratings.service)) ? `
+            <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;">
+              ${r.ratings.food    ? `<span style="font-size:11px;color:#8E8E93;" title="Food">🍴 ${'★'.repeat(r.ratings.food)}${'☆'.repeat(5-r.ratings.food)}</span>` : ''}
+              ${r.ratings.vibe    ? `<span style="font-size:11px;color:#8E8E93;" title="Vibe">✨ ${'★'.repeat(r.ratings.vibe)}${'☆'.repeat(5-r.ratings.vibe)}</span>` : ''}
+              ${r.ratings.service ? `<span style="font-size:11px;color:#8E8E93;" title="Service">🤝 ${'★'.repeat(r.ratings.service)}${'☆'.repeat(5-r.ratings.service)}</span>` : ''}
+              ${r.ratings.cost    ? `<span style="font-size:11px;color:#8E8E93;">${escHtml(r.ratings.cost)}</span>` : ''}
+            </div>` : ''}
+            ${r.notes ? `<div style="font-size:11px;color:#AEAEB2;margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">"${escHtml(r.notes)}"</div>` : ''}
           </div>
           <div style="margin-left:10px;flex-shrink:0;">
             <span style="background:${tierCfg.bg};color:${tierCfg.text};padding:3px 9px;border-radius:100px;font-size:10px;font-weight:700;white-space:nowrap;">
@@ -1035,6 +1043,28 @@ window.openRestaurantDetail = function(id) {
         </div>
 
         <div style="padding:0 20px 8px;">
+          <div class="ios-card" style="padding:16px;display:flex;flex-direction:column;gap:18px;">
+            <div style="font-size:16px;font-weight:700;color:#000;letter-spacing:-0.2px;">Your Review</div>
+
+            ${starPicker('rev-food',    (r.ratings||{}).food,    'Food')}
+            ${starPicker('rev-vibe',    (r.ratings||{}).vibe,    'Vibe')}
+            ${starPicker('rev-service', (r.ratings||{}).service, 'Service / Experience')}
+
+            <div style="height:0.5px;background:#F2F2F7;margin:0 -4px;"></div>
+
+            ${pillPicker('rev-parking', ['Easy','Street','Paid','Difficult'], (r.ratings||{}).parking, 'Parking')}
+            ${pillPicker('rev-cost',    ['$','$$','$$$','$$$$'],              (r.ratings||{}).cost,    'Cost')}
+
+            <div style="height:0.5px;background:#F2F2F7;margin:0 -4px;"></div>
+
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:7px;">Notes</div>
+              <textarea id="rev-notes" placeholder="Any memories, dishes to order, things to remember…" style="width:100%;min-height:88px;background:#F8F8F8;border:none;border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;color:#000;resize:none;outline:none;line-height:1.5;">${escHtml(r.notes || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:0 20px 8px;">
           <div class="ios-card">
             <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Tier</div>
@@ -1084,15 +1114,27 @@ window.saveLastVisited = function(id) {
 window.saveDetailChanges = function(id) {
   const r = state.restaurants.find(r => r.id === id);
   if (!r) return;
-  const tier = document.getElementById('detail-tier').value;
-  const location = document.getElementById('detail-location').value;
+  const tier        = document.getElementById('detail-tier').value;
+  const location    = document.getElementById('detail-location').value;
   const visitedDate = document.getElementById('detail-visited-date').value;
-  if (tier) r.tier = tier;
-  if (location) r.location = location;
+  if (tier)        r.tier        = tier;
+  if (location)    r.location    = location;
   if (visitedDate) r.lastVisited = visitedDate;
+
+  const food    = parseInt(document.getElementById('rev-food')?.value)    || null;
+  const vibe    = parseInt(document.getElementById('rev-vibe')?.value)    || null;
+  const service = parseInt(document.getElementById('rev-service')?.value) || null;
+  const parking = document.getElementById('rev-parking')?.value || null;
+  const cost    = document.getElementById('rev-cost')?.value    || null;
+  const notes   = (document.getElementById('rev-notes')?.value || '').trim();
+
+  r.ratings = { food, vibe, service, parking: parking || null, cost: cost || null };
+  r.notes   = notes;
+
   saveRestaurants();
   closeModal();
-  renderList();
+  if (state.tab === 'history') renderHistory();
+  else renderList();
   showToast('Changes saved!');
 };
 
@@ -1107,6 +1149,61 @@ window.deleteRestaurant = function(id, name) {
 
 window.closeModal = function() {
   document.getElementById('modal-root').innerHTML = '';
+};
+
+// ─── Review Helpers ───────────────────────────────────────────────────────────
+
+function starPicker(fieldId, currentVal, label) {
+  const val = currentVal || 0;
+  const stars = [1,2,3,4,5].map(n =>
+    `<span onclick="setRating('${fieldId}',${n})" id="${fieldId}-s${n}" style="font-size:30px;cursor:pointer;line-height:1;transition:transform 0.12s;">${n <= val ? '★' : '☆'}</span>`
+  ).join('');
+  return `
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:7px;">${label}</div>
+      <div style="display:flex;gap:4px;align-items:center;">${stars}</div>
+      <input type="hidden" id="${fieldId}" value="${val || ''}" />
+    </div>`;
+}
+
+function pillPicker(fieldId, options, currentVal, label) {
+  const pills = options.map(opt => {
+    const on = opt === currentVal;
+    return `<button onclick="setPill('${fieldId}','${escHtml(opt)}')" id="${fieldId}-p-${escHtml(opt)}" style="padding:6px 14px;border-radius:100px;border:none;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.15s;background:${on?'#007AFF':'white'};color:${on?'white':'#3C3C43'};box-shadow:${on?'0 2px 8px rgba(0,122,255,0.28)':'0 1px 3px rgba(0,0,0,0.08)'};">${escHtml(opt)}</button>`;
+  }).join('');
+  return `
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:7px;">${label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;">${pills}</div>
+      <input type="hidden" id="${fieldId}" value="${escHtml(currentVal || '')}" />
+    </div>`;
+}
+
+window.setRating = function(fieldId, n) {
+  const inp = document.getElementById(fieldId);
+  if (!inp) return;
+  const cur = parseInt(inp.value) || 0;
+  const newVal = cur === n ? 0 : n;
+  inp.value = newVal;
+  for (let i = 1; i <= 5; i++) {
+    const s = document.getElementById(fieldId + '-s' + i);
+    if (s) s.textContent = i <= newVal ? '★' : '☆';
+  }
+};
+
+window.setPill = function(fieldId, val) {
+  const inp = document.getElementById(fieldId);
+  if (!inp) return;
+  const cur = inp.value;
+  const newVal = cur === val ? '' : val;
+  inp.value = newVal;
+  document.querySelectorAll(`[id^="${fieldId}-p-"]`).forEach(btn => {
+    const bval = btn.id.slice((fieldId + '-p-').length);
+    const on = bval === newVal;
+    btn.style.background = on ? '#007AFF' : 'white';
+    btn.style.color = on ? 'white' : '#3C3C43';
+    btn.style.boxShadow = on ? '0 2px 8px rgba(0,122,255,0.28)' : '0 1px 3px rgba(0,0,0,0.08)';
+  });
 };
 
 // ─── Export / Import ─────────────────────────────────────────────────────────
