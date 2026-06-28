@@ -1,6 +1,39 @@
 // ─── Data & Constants ────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'ok_eats_restaurants_v2';
+const API_BASE    = '/api/restaurants';
+
+// ─── API Helpers ──────────────────────────────────────────────────────────────
+
+async function apiCall(path, opts = {}) {
+  try {
+    const res = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn('API error:', e);
+    return null;
+  }
+}
+
+function apiSave(r) {
+  return apiCall(`${API_BASE}/${r.id}`, { method: 'PUT', body: JSON.stringify(r) });
+}
+
+function apiCreate(r) {
+  return apiCall(API_BASE, { method: 'POST', body: JSON.stringify(r) });
+}
+
+function apiRemove(id) {
+  return apiCall(`${API_BASE}/${id}`, { method: 'DELETE' });
+}
+
+function apiBulk(arr) {
+  return apiCall(`${API_BASE}/bulk`, { method: 'POST', body: JSON.stringify(arr) });
+}
 
 const TIERS = [
   'Tier 1 - Never Skip',
@@ -340,7 +373,7 @@ let state = {
   expandedFilters: false,
 };
 
-function loadRestaurants() {
+function loadRestaurantsLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -1038,6 +1071,7 @@ window.submitLogVisit = function() {
 
   state.restaurants.push(newR);
   saveRestaurants();
+  apiCreate(newR);
   closeModal();
   renderHistory();
   showToast(`${name} logged!`);
@@ -1135,6 +1169,7 @@ window.submitAddRestaurant = function() {
   };
   state.restaurants.push(newR);
   saveRestaurants();
+  apiCreate(newR);
   closeModal();
   renderList();
   showToast(`${name} added!`);
@@ -1272,6 +1307,7 @@ window.markTodayVisit = function(id) {
   if (!r) return;
   r.lastVisited = today();
   saveRestaurants();
+  apiSave(r);
   closeModal();
   renderList();
   showToast(`${r.name} marked as visited today!`);
@@ -1284,6 +1320,7 @@ window.saveLastVisited = function(id) {
   if (!val) return;
   r.lastVisited = val;
   saveRestaurants();
+  apiSave(r);
   closeModal();
   renderList();
   showToast(`Visit date updated!`);
@@ -1310,6 +1347,7 @@ window.saveDetailChanges = function(id) {
   r.notes   = notes;
 
   saveRestaurants();
+  apiSave(r);
   closeModal();
   if (state.tab === 'history') renderHistory();
   else renderList();
@@ -1320,6 +1358,7 @@ window.deleteRestaurant = function(id, name) {
   if (!confirm(`Remove "${name}" from your list?`)) return;
   state.restaurants = state.restaurants.filter(r => r.id !== id);
   saveRestaurants();
+  apiRemove(id);
   closeModal();
   renderList();
   showToast(`${name} removed.`);
@@ -1428,6 +1467,7 @@ window.handleImportFile = function(input) {
         }
       });
       saveRestaurants();
+      apiBulk(parsed).then(() => showToast(`Synced to server ✓`));
       renderList();
       showToast(`Imported: ${added} added, ${updated} updated`);
     } catch (err) {
@@ -1477,5 +1517,30 @@ if ('serviceWorker' in navigator) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-state.restaurants = loadRestaurants();
-renderDiscover();
+async function init() {
+  const discoverEl = document.getElementById('page-discover');
+  discoverEl.innerHTML = `
+    <div style="padding:80px 20px;text-align:center;">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:8px;">OK Eats</div>
+      <div style="font-size:14px;color:#8E8E93;">Loading your list…</div>
+    </div>`;
+
+  const rows = await apiCall(API_BASE);
+
+  if (rows && rows.length > 0) {
+    state.restaurants = rows;
+    saveRestaurants();
+  } else if (rows && rows.length === 0) {
+    // First run — seed the database
+    state.restaurants = JSON.parse(JSON.stringify(SEED_RESTAURANTS));
+    saveRestaurants();
+    await apiBulk(state.restaurants);
+  } else {
+    // API unreachable — fall back to local cache
+    state.restaurants = loadRestaurantsLocal();
+  }
+
+  renderDiscover();
+}
+
+init();
