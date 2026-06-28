@@ -578,6 +578,103 @@ function renderResultCard(r, index) {
     </div>`;
 }
 
+// ─── Render: History Tab ──────────────────────────────────────────────────────
+
+function renderHistory() {
+  const el = document.getElementById('page-history');
+
+  const visited = state.restaurants
+    .filter(r => r.lastVisited)
+    .sort((a, b) => b.lastVisited.localeCompare(a.lastVisited));
+
+  if (visited.length === 0) {
+    el.innerHTML = `
+      <div style="padding:20px 20px 12px;">
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
+        <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+      </div>
+      <div style="padding:40px 20px;text-align:center;">
+        <div style="font-size:52px;margin-bottom:14px;">🍴</div>
+        <div style="font-size:18px;font-weight:600;color:#000;margin-bottom:6px;">No visits yet</div>
+        <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Mark restaurants as visited<br/>and they'll appear here.</div>
+      </div>`;
+    return;
+  }
+
+  // Stats
+  const totalVisits = visited.length;
+  const uniqueLocations = new Set(visited.map(r => r.location)).size;
+  const acclaimedCount = visited.filter(r => r.acclaimed).length;
+
+  // Group by month
+  const groups = {};
+  visited.forEach(r => {
+    const d = new Date(r.lastVisited + 'T00:00:00');
+    const key = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  let groupsHtml = '';
+  for (const [month, items] of Object.entries(groups)) {
+    const rows = items.map((r, idx) => {
+      const tierCfg = TIER_COLORS[r.tier] || { bg: '#F2F2F7', text: '#3C3C43', dot: '#8E8E93' };
+      const isFirst = idx === 0;
+      return `
+        <div class="list-row" onclick="openRestaurantDetail('${escHtml(r.id)}')" style="${!isFirst ? 'border-top:0.5px solid #F2F2F7;' : ''}">
+          <div style="margin-right:12px;text-align:center;flex-shrink:0;width:32px;">
+            <div style="font-size:12px;font-weight:700;color:#8E8E93;line-height:1;">${new Date(r.lastVisited + 'T00:00:00').toLocaleDateString('en-US', { month:'short' }).toUpperCase()}</div>
+            <div style="font-size:19px;font-weight:700;color:#000;line-height:1.1;">${new Date(r.lastVisited + 'T00:00:00').getDate()}</div>
+          </div>
+          <div style="width:1px;background:#E5E5EA;align-self:stretch;margin-right:14px;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+              <div style="font-size:15px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.name)}</div>
+              ${r.acclaimed ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
+            </div>
+            <div style="font-size:12px;color:#8E8E93;">📍 ${escHtml(r.location)}</div>
+          </div>
+          <div style="margin-left:10px;flex-shrink:0;">
+            <span style="background:${tierCfg.bg};color:${tierCfg.text};padding:3px 9px;border-radius:100px;font-size:10px;font-weight:700;white-space:nowrap;">
+              <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${tierCfg.dot};margin-right:3px;vertical-align:middle;margin-bottom:1px;"></span>${escHtml(r.tier.replace('Tier 1 - ','T1 ').replace('Tier 2 - ','T2 ').replace('Tier 3 - ','T3 ').replace('The Fun Category','Fun'))}
+            </span>
+          </div>
+        </div>`;
+    }).join('');
+
+    groupsHtml += `
+      <div class="section-label">${escHtml(month)} <span style="color:#C7C7CC;font-weight:400;">(${items.length})</span></div>
+      <div class="ios-card">${rows}</div>`;
+  }
+
+  el.innerHTML = `
+    <div style="padding:20px 20px 12px;">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">History</div>
+      <div style="font-size:14px;color:#8E8E93;">Every place you've been</div>
+    </div>
+
+    <div style="padding:0 20px 16px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div class="ios-card" style="padding:14px 12px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#007AFF;letter-spacing:-0.5px;">${totalVisits}</div>
+          <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Visits</div>
+        </div>
+        <div class="ios-card" style="padding:14px 12px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#34C759;letter-spacing:-0.5px;">${uniqueLocations}</div>
+          <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Cities</div>
+        </div>
+        <div class="ios-card" style="padding:14px 12px;text-align:center;">
+          <div style="font-size:24px;font-weight:700;color:#FFCC00;letter-spacing:-0.5px;">${acclaimedCount}</div>
+          <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Acclaimed</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:0 20px 32px;">
+      ${groupsHtml}
+    </div>`;
+}
+
 // ─── Render: My List Tab ──────────────────────────────────────────────────────
 
 function renderList() {
@@ -652,14 +749,30 @@ function renderList() {
       </div>
     </div>
 
-    <div style="padding:0 20px 12px;">
-      <button onclick="openAddRestaurant()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;transition:background 0.1s;" ontouchstart="" >
-        <span style="width:28px;height:28px;background:#007AFF;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">+</span>
+    <div style="padding:0 20px 12px;display:flex;flex-direction:column;gap:8px;">
+      <button onclick="openAddRestaurant()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+        <span style="width:28px;height:28px;background:#007AFF;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px;color:white;flex-shrink:0;">+</span>
         <div style="text-align:left;">
           <div style="font-size:15px;font-weight:600;color:#000;">Add Restaurant</div>
           <div style="font-size:12px;color:#8E8E93;">Add a new spot to your list</div>
         </div>
       </button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="exportData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬆️</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Export</div>
+            <div style="font-size:11px;color:#8E8E93;">Download JSON</div>
+          </div>
+        </button>
+        <button onclick="importData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬇️</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Import</div>
+            <div style="font-size:11px;color:#8E8E93;">Load JSON</div>
+          </div>
+        </button>
+      </div>
     </div>
 
     <div style="padding:0 20px 32px;">
@@ -673,11 +786,15 @@ function renderList() {
 window.switchTab = function(tab) {
   state.tab = tab;
   state.results = null;
-  document.getElementById('page-discover').style.display = tab === 'discover' ? '' : 'none';
-  document.getElementById('page-list').style.display = tab === 'list' ? '' : 'none';
-  document.getElementById('tab-label-discover').style.color = tab === 'discover' ? '#007AFF' : '#8E8E93';
-  document.getElementById('tab-label-list').style.color = tab === 'list' ? '#007AFF' : '#8E8E93';
+  const pages = ['discover', 'history', 'list'];
+  pages.forEach(p => {
+    const pg = document.getElementById('page-' + p);
+    if (pg) pg.style.display = tab === p ? '' : 'none';
+    const lbl = document.getElementById('tab-label-' + p);
+    if (lbl) lbl.style.color = tab === p ? '#007AFF' : '#8E8E93';
+  });
   if (tab === 'discover') renderDiscover();
+  else if (tab === 'history') renderHistory();
   else renderList();
 };
 
@@ -990,6 +1107,59 @@ window.deleteRestaurant = function(id, name) {
 
 window.closeModal = function() {
   document.getElementById('modal-root').innerHTML = '';
+};
+
+// ─── Export / Import ─────────────────────────────────────────────────────────
+
+window.exportData = function() {
+  const json = JSON.stringify(state.restaurants, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ok-eats-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${state.restaurants.length} restaurants`);
+};
+
+window.importData = function() {
+  const input = document.getElementById('import-file-input');
+  if (input) { input.value = ''; input.click(); }
+};
+
+window.handleImportFile = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!Array.isArray(parsed)) throw new Error('Not an array');
+      // Validate basic shape
+      const valid = parsed.every(r => r.id && r.name && r.tier);
+      if (!valid) throw new Error('Invalid restaurant format');
+
+      // Merge: keep existing restaurants, add/update from import by id
+      const existingIds = new Map(state.restaurants.map(r => [r.id, r]));
+      let added = 0, updated = 0;
+      parsed.forEach(r => {
+        if (existingIds.has(r.id)) {
+          Object.assign(existingIds.get(r.id), r);
+          updated++;
+        } else {
+          state.restaurants.push(r);
+          added++;
+        }
+      });
+      saveRestaurants();
+      renderList();
+      showToast(`Imported: ${added} added, ${updated} updated`);
+    } catch (err) {
+      showToast('Import failed — invalid JSON format');
+    }
+  };
+  reader.readAsText(file);
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

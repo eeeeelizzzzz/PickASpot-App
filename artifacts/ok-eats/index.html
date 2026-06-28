@@ -243,12 +243,17 @@
 <body>
   <div id="app">
     <div id="page-discover" class="page" style="padding-top: var(--safe-top);"></div>
-    <div id="page-list" class="page" style="display:none; padding-top: var(--safe-top);"></div>
+    <div id="page-list"     class="page" style="display:none; padding-top: var(--safe-top);"></div>
+    <div id="page-history"  class="page" style="display:none; padding-top: var(--safe-top);"></div>
     <div class="tab-bar">
       <div style="display:flex;">
         <button class="tab-btn" id="tab-discover" onclick="switchTab('discover')">
           <span style="font-size:22px;">🍽️</span>
           <span id="tab-label-discover" style="font-size:10px;font-weight:600;color:#007AFF;">Discover</span>
+        </button>
+        <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
+          <span style="font-size:22px;">🗓️</span>
+          <span id="tab-label-history" style="font-size:10px;font-weight:600;color:#8E8E93;">History</span>
         </button>
         <button class="tab-btn" id="tab-list" onclick="switchTab('list')">
           <span style="font-size:22px;">📋</span>
@@ -256,6 +261,7 @@
         </button>
       </div>
     </div>
+    <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="handleImportFile(this)" />
   </div>
   <div id="modal-root"></div>
   <script type="module" src="./src/app.js"></script>
