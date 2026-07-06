@@ -38,37 +38,38 @@ function apiBulk(arr) {
 }
 
 const TIERS = [
-  'Tier 1 - Never Skip',
-  'Tier 2 - The New Guard',
-  'Tier 3 - Stellar Classics',
-  'The Fun Category',
+  '1: Delivery / Couch Meal',
+  '2: Casual / Takeout',
+  '3: Elevated / Sit-Down',
+  '5: Destination / Special Occasion',
 ];
 
-const LOCATIONS = ['OKC', 'Norman', 'Edmond', 'Yukon', 'Guthrie', 'Tulsa', 'Stillwater', 'Midwest City'];
-const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
+const LOCATIONS = ['Edmond', 'Moore', 'Norman', 'OKC - City', 'OKC - Outer', 'Other'];
+
+const DISTANCE = ['In-town', 'Short Drive', 'Longer Drive', 'Destination'];
+
+const REASONS = [
+  'Acclaim / Awards', 'Classic / Staple', 'EatingOKC', 'Favorite',
+  'Media / Online', 'New / Updated', 'Personal Recommendation',
+];
 
 const ALL_TAGS = [
-  // Style / Experience
-  'Fine Dining', 'Upscale Casual', 'Casual', 'Chef Driven',
-  'Tasting Menu', 'Updated Menu', 'Reservations Recommended',
-  'Priority', 'OkieEats List',
-  // Food Type
-  'Asian', 'Italian', 'Mexican', 'Sushi', 'Seafood',
-  'Steakhouse', 'BBQ', 'Burgers', 'Sandwiches',
-  'Farm to Table', 'Brunch', 'Breakfast',
-  // Setting
-  'Patio / Outdoor', 'Great Cocktails',
-  // Practical
-  'Vegetarian Friendly', 'Takeout / Delivery', 'Fast Service',
-  // Distance
-  'Nearby', 'Short Drive', 'A Trip',
+  'Asian', 'Bakery / Dessert', 'Bar Food', 'BBQ', 'Breakfast / Brunch',
+  'Burgers', 'Counter Service', 'Drive-thru', 'Everyday Casual',
+  'Fine Dining', 'French', 'Fusion', 'Gluten Free Options',
+  'Good for Groups', 'Great Cocktails', 'Italian', 'Large Beer List',
+  'Large Wine Selection', 'Latin / Mexican', 'Mediterranean',
+  'Middle Eastern / Indian', 'New American', 'No-Frills', 'Noodles',
+  'Patio / Outdoor', 'Pizza', 'Reservations Required', 'Sandwiches',
+  'Seafood', 'Southern / Comfort Food', 'Steakhouse', 'Sushi',
+  'Takes Reservations', 'Upscale Casual', 'Vegetarian Friendly',
 ];
 
 const TIER_COLORS = {
-  'Tier 1 - Never Skip':   { bg: '#FFF3E0', text: '#E65100', dot: '#FF9500' },
-  'Tier 2 - The New Guard':{ bg: '#E3F2FD', text: '#0D47A1', dot: '#007AFF' },
-  'Tier 3 - Stellar Classics':{ bg: '#F3E5F5', text: '#4A148C', dot: '#AF52DE' },
-  'The Fun Category':      { bg: '#E8F5E9', text: '#1B5E20', dot: '#34C759' },
+  '1: Delivery / Couch Meal':          { bg: '#E8F5E9', text: '#1B5E20', dot: '#34C759' },
+  '2: Casual / Takeout':               { bg: '#E3F2FD', text: '#0D47A1', dot: '#007AFF' },
+  '3: Elevated / Sit-Down':            { bg: '#F3E5F5', text: '#4A148C', dot: '#AF52DE' },
+  '5: Destination / Special Occasion': { bg: '#FFF3E0', text: '#E65100', dot: '#FF9500' },
 };
 
 const TAG_COLORS = [
@@ -88,284 +89,9 @@ function tagColor(tag) {
 }
 
 // ─── Default Seed Data ───────────────────────────────────────────────────────
+// No seed data — the couple re-enters their list fresh via the Google Sheet sync.
 
-const SEED_RESTAURANTS = [
-  {
-    id: 'r1',
-    name: 'Nonesuch',
-    location: 'OKC',
-    tier: 'Tier 1 - Never Skip',
-    tags: ['Fine Dining', 'Chef Driven', 'Tasting Menu', 'Seasonal Menu', 'Date Night'],
-    acclaimed: true,
-    dateSaved: '2023-08-15',
-    lastVisited: null,
-    bestSeasons: ['Fall', 'Winter'],
-  },
-  {
-    id: 'r2',
-    name: 'Later Bye',
-    location: 'OKC',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Great Cocktails', 'Chef Driven', 'Date Night', 'Late Night'],
-    acclaimed: true,
-    dateSaved: '2023-11-20',
-    lastVisited: '2024-12-01',
-    bestSeasons: ['Fall', 'Winter', 'Spring'],
-  },
-  {
-    id: 'r3',
-    name: "Sedalia's Oyster & Seafood",
-    location: 'OKC',
-    tier: 'Tier 1 - Never Skip',
-    tags: ['Seafood', 'Chef Driven', 'Patio', 'Fine Dining', 'Date Night'],
-    acclaimed: true,
-    dateSaved: '2023-09-10',
-    lastVisited: null,
-    bestSeasons: ['Summer', 'Spring'],
-  },
-  {
-    id: 'r4',
-    name: 'Magic Noodle',
-    location: 'Norman',
-    tier: 'The Fun Category',
-    tags: ['International', 'Casual', 'Local Favorite', 'Vegetarian Friendly'],
-    acclaimed: false,
-    dateSaved: '2024-01-05',
-    lastVisited: '2024-11-15',
-    bestSeasons: ['Fall', 'Winter', 'Spring', 'Summer'],
-  },
-  {
-    id: 'r5',
-    name: 'Plus254',
-    location: 'OKC',
-    tier: 'The Fun Category',
-    tags: ['International', 'Hidden Gem', 'Casual', 'Local Favorite'],
-    acclaimed: false,
-    dateSaved: '2024-02-14',
-    lastVisited: null,
-    bestSeasons: ['Spring', 'Summer', 'Fall', 'Winter'],
-  },
-  {
-    id: 'r6',
-    name: 'Sunnyside Diner',
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['Brunch', 'Local Favorite', 'Casual', 'Outdoor Dining'],
-    acclaimed: false,
-    dateSaved: '2023-06-01',
-    lastVisited: '2024-09-20',
-    bestSeasons: ['Spring', 'Summer'],
-  },
-  {
-    id: 'r7',
-    name: 'Vast',
-    location: 'OKC',
-    tier: 'Tier 1 - Never Skip',
-    tags: ['Fine Dining', 'Date Night', 'Steakhouse', 'Great Cocktails'],
-    acclaimed: true,
-    dateSaved: '2023-05-12',
-    lastVisited: '2024-06-15',
-    bestSeasons: ['Fall', 'Winter', 'Spring'],
-  },
-  {
-    id: 'r8',
-    name: 'The Hutch',
-    location: 'OKC',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Great Cocktails', 'Seasonal Menu', 'Date Night', 'Patio'],
-    acclaimed: false,
-    dateSaved: '2024-01-20',
-    lastVisited: null,
-    bestSeasons: ['Spring', 'Summer', 'Fall'],
-  },
-  {
-    id: 'r9',
-    name: "Ludivine",
-    location: 'OKC',
-    tier: 'Tier 1 - Never Skip',
-    tags: ['Chef Driven', 'Farm to Table', 'Seasonal Menu', 'Fine Dining', 'Date Night'],
-    acclaimed: true,
-    dateSaved: '2023-04-28',
-    lastVisited: '2024-03-10',
-    bestSeasons: ['Spring', 'Summer', 'Fall'],
-  },
-  {
-    id: 'r10',
-    name: "Provision Kitchen",
-    location: 'Edmond',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Farm to Table', 'Brunch', 'Seasonal Menu', 'Patio'],
-    acclaimed: false,
-    dateSaved: '2024-03-01',
-    lastVisited: null,
-    bestSeasons: ['Spring', 'Summer'],
-  },
-  {
-    id: 'r11',
-    name: "Musashi's",
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['International', 'Local Favorite', 'Casual', 'Date Night'],
-    acclaimed: false,
-    dateSaved: '2023-07-19',
-    lastVisited: '2024-08-05',
-    bestSeasons: ['Fall', 'Winter', 'Spring', 'Summer'],
-  },
-  {
-    id: 'r12',
-    name: "The Jones Assembly",
-    location: 'OKC',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Great Cocktails', 'Patio', 'Late Night', 'Brunch', 'Outdoor Dining'],
-    acclaimed: false,
-    dateSaved: '2023-10-05',
-    lastVisited: '2024-05-30',
-    bestSeasons: ['Spring', 'Summer', 'Fall'],
-  },
-  {
-    id: 'r13',
-    name: "Prairie Thunder Bakehouse",
-    location: 'Guthrie',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['Brunch', 'Worth the Drive', 'Local Favorite', 'Casual'],
-    acclaimed: false,
-    dateSaved: '2024-04-10',
-    lastVisited: null,
-    bestSeasons: ['Spring', 'Summer'],
-  },
-  {
-    id: 'r14',
-    name: "Arnie's Bar-B-Q",
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['BBQ', 'Local Favorite', 'Casual', 'Outdoor Dining'],
-    acclaimed: false,
-    dateSaved: '2023-08-22',
-    lastVisited: '2024-07-04',
-    bestSeasons: ['Summer', 'Spring', 'Fall'],
-  },
-  {
-    id: 'r15',
-    name: "Ponyboy",
-    location: 'OKC',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Great Cocktails', 'Chef Driven', 'Late Night', 'Casual'],
-    acclaimed: true,
-    dateSaved: '2024-05-01',
-    lastVisited: null,
-    bestSeasons: ['Fall', 'Winter', 'Spring'],
-  },
-  {
-    id: 'r16',
-    name: "Indian Hills Steakhouse",
-    location: 'Yukon',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['Steakhouse', 'Worth the Drive', 'Local Favorite', 'Date Night'],
-    acclaimed: false,
-    dateSaved: '2023-12-01',
-    lastVisited: '2024-02-14',
-    bestSeasons: ['Winter', 'Fall'],
-  },
-  {
-    id: 'r17',
-    name: "Duet Restaurant & Bar",
-    location: 'Norman',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Chef Driven', 'Great Cocktails', 'Date Night', 'Seasonal Menu'],
-    acclaimed: false,
-    dateSaved: '2024-06-15',
-    lastVisited: null,
-    bestSeasons: ['Fall', 'Winter', 'Spring'],
-  },
-  {
-    id: 'r18',
-    name: "Fassler Hall",
-    location: 'OKC',
-    tier: 'The Fun Category',
-    tags: ['Great Cocktails', 'Patio', 'Outdoor Dining', 'Casual', 'Late Night'],
-    acclaimed: false,
-    dateSaved: '2023-09-30',
-    lastVisited: '2024-10-12',
-    bestSeasons: ['Spring', 'Summer', 'Fall'],
-  },
-  {
-    id: 'r19',
-    name: "Smoke on the Hill",
-    location: 'Edmond',
-    tier: 'The Fun Category',
-    tags: ['BBQ', 'Casual', 'Local Favorite', 'Outdoor Dining'],
-    acclaimed: false,
-    dateSaved: '2024-07-20',
-    lastVisited: null,
-    bestSeasons: ['Summer', 'Spring'],
-  },
-  {
-    id: 'r20',
-    name: "Cafe do Brasil",
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['International', 'Brunch', 'Casual', 'Local Favorite'],
-    acclaimed: false,
-    dateSaved: '2023-11-15',
-    lastVisited: '2024-04-20',
-    bestSeasons: ['Spring', 'Summer', 'Fall', 'Winter'],
-  },
-  {
-    id: 'r21',
-    name: "El Fogon",
-    location: 'OKC',
-    tier: 'The Fun Category',
-    tags: ['International', 'Hidden Gem', 'Casual', 'Local Favorite'],
-    acclaimed: false,
-    dateSaved: '2024-03-25',
-    lastVisited: null,
-    bestSeasons: ['Spring', 'Summer', 'Fall', 'Winter'],
-  },
-  {
-    id: 'r22',
-    name: "CIDOR",
-    location: 'OKC',
-    tier: 'Tier 2 - The New Guard',
-    tags: ['Fine Dining', 'Chef Driven', 'Date Night', 'Great Cocktails'],
-    acclaimed: true,
-    dateSaved: '2024-08-10',
-    lastVisited: null,
-    bestSeasons: ['Fall', 'Winter'],
-  },
-  {
-    id: 'r23',
-    name: "Sisserou's",
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['International', 'Great Cocktails', 'Patio', 'Date Night'],
-    acclaimed: false,
-    dateSaved: '2024-02-05',
-    lastVisited: '2024-11-01',
-    bestSeasons: ['Summer', 'Spring', 'Fall'],
-  },
-  {
-    id: 'r24',
-    name: "Kitchen No. 324",
-    location: 'OKC',
-    tier: 'Tier 3 - Stellar Classics',
-    tags: ['Brunch', 'Seasonal Menu', 'Outdoor Dining', 'Date Night'],
-    acclaimed: false,
-    dateSaved: '2023-06-10',
-    lastVisited: '2024-09-08',
-    bestSeasons: ['Spring', 'Summer'],
-  },
-  {
-    id: 'r25',
-    name: "Goro Ramen",
-    location: 'OKC',
-    tier: 'The Fun Category',
-    tags: ['International', 'Casual', 'Local Favorite', 'Late Night'],
-    acclaimed: false,
-    dateSaved: '2024-01-12',
-    lastVisited: null,
-    bestSeasons: ['Fall', 'Winter', 'Spring'],
-  },
-];
+const SEED_RESTAURANTS = [];
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -375,6 +101,8 @@ let state = {
   filters: {
     locations: [],
     tags: [],
+    distance: [],
+    reasons: [],
   },
   results: null,
   top10Pool: null,
@@ -416,25 +144,31 @@ function scoreRestaurant(r) {
   if (!r.lastVisited) score += 5;
   // +3 saved over 6 months
   if (daysBetween(r.dateSaved, t) > 180) score += 3;
-  // +2 acclaimed
-  if (r.acclaimed) score += 2;
-  // +3 priority tag
-  if ((r.tags || []).includes('Priority')) score += 3;
+  // +2 acclaimed / awards reason
+  if ((r.reasons || []).includes('Acclaim / Awards')) score += 2;
+  // +3 favorite reason
+  if ((r.reasons || []).includes('Favorite')) score += 3;
   // -5 visited in last 90 days
   if (r.lastVisited && daysBetween(r.lastVisited, t) < 90) score -= 5;
   return score;
 }
 
 function findRecommendations() {
-  const { locations, tags } = state.filters;
+  const { locations, tags, distance, reasons } = state.filters;
   let pool = state.restaurants.slice();
 
   // Filter
   if (locations.length > 0) {
     pool = pool.filter(r => locations.includes(r.location));
   }
+  if (distance.length > 0) {
+    pool = pool.filter(r => distance.includes(r.distance));
+  }
   if (tags.length > 0) {
     pool = pool.filter(r => tags.every(tag => r.tags.includes(tag)));
+  }
+  if (reasons.length > 0) {
+    pool = pool.filter(r => reasons.every(reason => (r.reasons || []).includes(reason)));
   }
 
   // Score
@@ -492,12 +226,22 @@ function renderDiscover() {
     return `<button class="pill ${on ? 'pill-on' : 'pill-off'}" onclick="toggleLocation('${escHtml(loc)}')">${escHtml(loc)}</button>`;
   }).join('');
 
+  const distancePills = DISTANCE.map(d => {
+    const on = filters.distance.includes(d);
+    return `<button class="pill ${on ? 'pill-on' : 'pill-off'}" onclick="toggleDistance('${escHtml(d)}')">${escHtml(d)}</button>`;
+  }).join('');
+
   const tagPills = ALL_TAGS.map(tag => {
     const on = filters.tags.includes(tag);
     return `<button class="pill ${on ? 'pill-on' : 'pill-off'}" onclick="toggleTag('${escHtml(tag)}')">${escHtml(tag)}</button>`;
   }).join('');
 
-  const activeCount = filters.locations.length + filters.tags.length;
+  const reasonPills = REASONS.map(reason => {
+    const on = filters.reasons.includes(reason);
+    return `<button class="pill ${on ? 'pill-on' : 'pill-off'}" onclick="toggleReason('${escHtml(reason)}')">${escHtml(reason)}</button>`;
+  }).join('');
+
+  const activeCount = filters.locations.length + filters.tags.length + filters.distance.length + filters.reasons.length;
   const activeLabel = activeCount > 0 ? `<span style="background:#007AFF;color:white;border-radius:100px;padding:0 6px;font-size:11px;font-weight:700;margin-left:4px;">${activeCount}</span>` : '';
 
   let resultsHtml = '';
@@ -548,9 +292,19 @@ function renderDiscover() {
           ${locationPills}
         </div>
 
+        <div style="font-size:12px;font-weight:700;color:#8E8E93;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Distance</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;">
+          ${distancePills}
+        </div>
+
         <div style="font-size:12px;font-weight:700;color:#8E8E93;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Tags</div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;">
           ${tagPills}
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:#8E8E93;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:10px;">Reasons</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+          ${reasonPills}
         </div>
       </div>
     </div>
@@ -570,7 +324,9 @@ function getPoolSize() {
   const { filters } = state;
   let pool = state.restaurants.slice();
   if (filters.locations.length > 0) pool = pool.filter(r => filters.locations.includes(r.location));
+  if (filters.distance.length > 0) pool = pool.filter(r => filters.distance.includes(r.distance));
   if (filters.tags.length > 0) pool = pool.filter(r => filters.tags.every(tag => r.tags.includes(tag)));
+  if (filters.reasons.length > 0) pool = pool.filter(r => filters.reasons.every(reason => (r.reasons || []).includes(reason)));
   return pool.length;
 }
 
@@ -580,9 +336,11 @@ function renderResultCard(r, index) {
     const c = tagColor(tag);
     return `<span class="badge-tag" style="background:${c.bg};color:${c.text};">${escHtml(tag)}</span>`;
   }).join('');
-  const acclaimedBadge = r.acclaimed
-    ? `<span class="badge-tag" style="background:#FFF8E1;color:#B25D00;">⭐ Acclaimed</span>`
-    : '';
+  const reasonBadges = (r.reasons || []).map(reason => {
+    return reason === 'Favorite'
+      ? `<span class="badge-tag" style="background:#FFF8E1;color:#B25D00;">⭐ Favorite</span>`
+      : `<span class="badge-tag" style="background:#FFF8E1;color:#B25D00;">${escHtml(reason)}</span>`;
+  }).join('');
   const visitedText = r.lastVisited ? relativeDate(r.lastVisited) : '✦ Never visited';
   const scoreColor = r._score >= 7 ? '#34C759' : r._score >= 4 ? '#007AFF' : r._score >= 0 ? '#FF9500' : '#FF3B30';
   const delayClass = ['', 'd1', 'd2'][index] || '';
@@ -607,8 +365,9 @@ function renderResultCard(r, index) {
         </div>
       </div>
       <div style="padding:12px 16px 14px;border-top:0.5px solid #F2F2F7;">
+        <div style="font-size:12px;color:#8E8E93;font-weight:500;margin-bottom:8px;">${escHtml(r.distance || '')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
-          ${acclaimedBadge}
+          ${reasonBadges}
           ${tagBadges}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -650,7 +409,7 @@ function renderHistory() {
   // Stats
   const totalVisits = visited.length;
   const uniqueLocations = new Set(visited.map(r => r.location)).size;
-  const acclaimedCount = visited.filter(r => r.acclaimed).length;
+  const favoriteCount = visited.filter(r => (r.reasons || []).includes('Favorite')).length;
 
   // Group by month
   const groups = {};
@@ -676,7 +435,7 @@ function renderHistory() {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
               <div style="font-size:15px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.name)}</div>
-              ${r.acclaimed ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
+              ${(r.reasons || []).includes('Favorite') ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
             </div>
             <div style="font-size:12px;color:#8E8E93;">📍 ${escHtml(r.location)}</div>
             ${(r.ratings && (r.ratings.food || r.ratings.vibe || r.ratings.service)) ? `
@@ -721,8 +480,8 @@ function renderHistory() {
           <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Cities</div>
         </div>
         <div class="ios-card" style="padding:14px 12px;text-align:center;">
-          <div style="font-size:24px;font-weight:700;color:#FFCC00;letter-spacing:-0.5px;">${acclaimedCount}</div>
-          <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Acclaimed</div>
+          <div style="font-size:24px;font-weight:700;color:#FFCC00;letter-spacing:-0.5px;">${favoriteCount}</div>
+          <div style="font-size:11px;color:#8E8E93;font-weight:500;margin-top:2px;">Favorites</div>
         </div>
       </div>
     </div>
@@ -765,7 +524,7 @@ function renderList() {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
               <div style="font-size:15px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.name)}</div>
-              ${r.acclaimed ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
+              ${(r.reasons || []).includes('Favorite') ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
             </div>
             <div style="font-size:12px;color:#8E8E93;">${escHtml(r.location)} · ${visitedText}</div>
           </div>
@@ -905,13 +664,24 @@ window.toggleTag = function(tag) {
   renderDiscover();
 };
 
-window._removedSetSeason = function(val) {
+window.toggleDistance = function(d) {
+  const idx = state.filters.distance.indexOf(d);
+  if (idx > -1) state.filters.distance.splice(idx, 1);
+  else state.filters.distance.push(d);
+  state.results = null;
+  renderDiscover();
+};
+
+window.toggleReason = function(reason) {
+  const idx = state.filters.reasons.indexOf(reason);
+  if (idx > -1) state.filters.reasons.splice(idx, 1);
+  else state.filters.reasons.push(reason);
   state.results = null;
   renderDiscover();
 };
 
 window.clearFilters = function() {
-  state.filters = { locations: [], tags: [] };
+  state.filters = { locations: [], tags: [], distance: [], reasons: [] };
   state.results = null;
   renderDiscover();
 };
@@ -966,10 +736,16 @@ window.openLogVisit = function() {
   const root = document.getElementById('modal-root');
   const tierOptions    = TIERS.map(t     => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   const locationOptions= LOCATIONS.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  const distanceOptions = DISTANCE.map(d => `<option value="${escHtml(d)}">${escHtml(d)}</option>`).join('');
   const tagCheckboxes  = ALL_TAGS.map(tag => `
     <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;border-bottom:0.5px solid #F5F5F5;">
       <input type="checkbox" name="lv-tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
       ${escHtml(tag)}
+    </label>`).join('');
+  const reasonCheckboxes = REASONS.map(reason => `
+    <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;border-bottom:0.5px solid #F5F5F5;">
+      <input type="checkbox" name="lv-reasons" value="${escHtml(reason)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
+      ${escHtml(reason)}
     </label>`).join('');
 
   root.innerHTML = `
@@ -1005,13 +781,10 @@ window.openLogVisit = function() {
                   <select id="lv-tier" class="ios-select">${tierOptions}</select>
                 </div>
               </div>
-              <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:white;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;">
-                <input id="lv-acclaimed" type="checkbox" style="width:17px;height:17px;accent-color:#007AFF;" />
-                <div>
-                  <div style="font-size:14px;font-weight:600;color:#000;">Acclaimed ⭐</div>
-                  <div style="font-size:11px;color:#8E8E93;">James Beard / critically celebrated</div>
-                </div>
-              </label>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Distance</div>
+                <select id="lv-distance" class="ios-select">${distanceOptions}</select>
+              </div>
             </div>
           </div>
 
@@ -1019,6 +792,12 @@ window.openLogVisit = function() {
           <div>
             <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Tags</div>
             <div class="ios-card" style="padding:0 12px;">${tagCheckboxes}</div>
+          </div>
+
+          <!-- ── Reasons ── -->
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#000;letter-spacing:-0.1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #F2F2F7;">Reasons</div>
+            <div class="ios-card" style="padding:0 12px;">${reasonCheckboxes}</div>
           </div>
 
           <!-- ── Visit Details ── -->
@@ -1065,9 +844,10 @@ window.submitLogVisit = function() {
 
   const location    = document.getElementById('lv-location').value;
   const tier        = document.getElementById('lv-tier').value;
-  const acclaimed   = document.getElementById('lv-acclaimed').checked;
+  const distance    = document.getElementById('lv-distance').value;
   const lastVisited = document.getElementById('lv-visited').value || today();
   const tags        = [...document.querySelectorAll('input[name="lv-tags"]:checked')].map(e => e.value);
+  const reasons     = [...document.querySelectorAll('input[name="lv-reasons"]:checked')].map(e => e.value);
   const food    = parseInt(document.getElementById('lv-food')?.value)    || null;
   const vibe    = parseInt(document.getElementById('lv-vibe')?.value)    || null;
   const service = parseInt(document.getElementById('lv-service')?.value) || null;
@@ -1081,7 +861,8 @@ window.submitLogVisit = function() {
     location,
     tier,
     tags,
-    acclaimed,
+    reasons,
+    distance,
     dateSaved:   today(),
     lastVisited,
     ratings: { food, vibe, service, parking: parking || null, cost: cost || null },
@@ -1102,15 +883,16 @@ window.openAddRestaurant = function() {
   const root = document.getElementById('modal-root');
   const tierOptions = TIERS.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   const locationOptions = LOCATIONS.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  const distanceOptions = DISTANCE.map(d => `<option value="${escHtml(d)}">${escHtml(d)}</option>`).join('');
   const tagCheckboxes = ALL_TAGS.map(tag => `
     <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
       <input type="checkbox" name="tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;" />
       ${escHtml(tag)}
     </label>`).join('');
-  const seasonChecks = SEASONS.map(s => `
+  const reasonCheckboxes = REASONS.map(reason => `
     <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
-      <input type="checkbox" name="seasons" value="${escHtml(s)}" style="width:17px;height:17px;accent-color:#007AFF;" />
-      ${escHtml(s)}
+      <input type="checkbox" name="reasons" value="${escHtml(reason)}" style="width:17px;height:17px;accent-color:#007AFF;" />
+      ${escHtml(reason)}
     </label>`).join('');
 
   root.innerHTML = `
@@ -1139,15 +921,18 @@ window.openAddRestaurant = function() {
             </select>
           </div>
           <div style="margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Distance</div>
+            <select id="add-distance" class="ios-select">
+              ${distanceOptions}
+            </select>
+          </div>
+          <div style="margin-bottom:12px;">
             <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Tags</div>
             <div class="ios-card" style="padding:4px 12px;">${tagCheckboxes}</div>
           </div>
           <div style="margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Acclaimed</div>
-            <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:white;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;">
-              <input id="add-acclaimed" type="checkbox" style="width:17px;height:17px;accent-color:#007AFF;" />
-              <span style="font-size:14px;color:#000;">James Beard / Highly Acclaimed</span>
-            </label>
+            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Reasons</div>
+            <div class="ios-card" style="padding:4px 12px;">${reasonCheckboxes}</div>
           </div>
           <div style="margin-bottom:24px;">
             <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Last Visited</div>
@@ -1166,16 +951,18 @@ window.submitAddRestaurant = function() {
   if (!name) { shakeEl('add-name'); return; }
   const location = document.getElementById('add-location').value;
   const tier = document.getElementById('add-tier').value;
-  const acclaimed = document.getElementById('add-acclaimed').checked;
+  const distance = document.getElementById('add-distance').value;
   const lastVisited = document.getElementById('add-visited').value || null;
   const tags = [...document.querySelectorAll('input[name="tags"]:checked')].map(el => el.value);
+  const reasons = [...document.querySelectorAll('input[name="reasons"]:checked')].map(el => el.value);
   const newR = {
     id: genId(),
     name,
     location,
     tier,
     tags,
-    acclaimed,
+    reasons,
+    distance,
     dateSaved: today(),
     lastVisited,
   };
@@ -1198,6 +985,9 @@ window.openRestaurantDetail = function(id) {
     const c = tagColor(tag);
     return `<span class="badge-tag" style="background:${c.bg};color:${c.text};">${escHtml(tag)}</span>`;
   }).join('');
+  const reasonBadges = (r.reasons || []).map(reason => {
+    return `<span class="badge-tag" style="background:#FFF8E1;color:#B25D00;">${escHtml(reason)}</span>`;
+  }).join('');
   const score = scoreRestaurant(r);
   const scoreColor = score >= 7 ? '#34C759' : score >= 4 ? '#007AFF' : score >= 0 ? '#FF9500' : '#FF3B30';
   const tierOptionHtml = TIERS.map(t =>
@@ -1206,6 +996,14 @@ window.openRestaurantDetail = function(id) {
   const locationOptionHtml = LOCATIONS.map(l =>
     `<option value="${escHtml(l)}" ${r.location === l ? 'selected' : ''}>${escHtml(l)}</option>`
   ).join('');
+  const distanceOptionHtml = DISTANCE.map(d =>
+    `<option value="${escHtml(d)}" ${r.distance === d ? 'selected' : ''}>${escHtml(d)}</option>`
+  ).join('');
+  const reasonCheckboxHtml = REASONS.map(reason => `
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
+      <input type="checkbox" name="detail-reasons" value="${escHtml(reason)}" ${(r.reasons||[]).includes(reason) ? 'checked' : ''} style="width:17px;height:17px;accent-color:#007AFF;" />
+      ${escHtml(reason)}
+    </label>`).join('');
 
   root.innerHTML = `
     <div class="modal-overlay" onclick="closeModal()">
@@ -1241,6 +1039,10 @@ window.openRestaurantDetail = function(id) {
             <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Tags</div>
               <div style="display:flex;flex-wrap:wrap;gap:5px;">${tagBadges || '<span style="font-size:13px;color:#C7C7CC;">No tags</span>'}</div>
+            </div>
+            <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
+              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Reasons</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">${reasonBadges || '<span style="font-size:13px;color:#C7C7CC;">No reasons</span>'}</div>
             </div>
             <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">Visit History</div>
@@ -1288,10 +1090,18 @@ window.openRestaurantDetail = function(id) {
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Tier</div>
               <select id="detail-tier" class="ios-select" style="box-shadow:none;padding-left:0;">${tierOptionHtml}</select>
             </div>
-            <div style="padding:14px 16px;">
+            <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Location</div>
               <select id="detail-location" class="ios-select" style="box-shadow:none;padding-left:0;">${locationOptionHtml}</select>
             </div>
+            <div style="padding:14px 16px;">
+              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Distance</div>
+              <select id="detail-distance" class="ios-select" style="box-shadow:none;padding-left:0;">${distanceOptionHtml}</select>
+            </div>
+          </div>
+          <div class="ios-card" style="margin-top:10px;padding:4px 16px;">
+            <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin:10px 0 2px;">Reasons</div>
+            ${reasonCheckboxHtml}
           </div>
           <button onclick="saveDetailChanges('${escHtml(r.id)}')" style="margin-top:10px;background:linear-gradient(145deg,#007AFF,#0055D4);color:white;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:600;font-family:inherit;width:100%;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.28);">
             Save Changes
@@ -1336,10 +1146,14 @@ window.saveDetailChanges = function(id) {
   if (!r) return;
   const tier        = document.getElementById('detail-tier').value;
   const location    = document.getElementById('detail-location').value;
+  const distance    = document.getElementById('detail-distance')?.value;
   const visitedDate = document.getElementById('detail-visited-date').value;
+  const reasons     = [...document.querySelectorAll('input[name="detail-reasons"]:checked')].map(e => e.value);
   if (tier)        r.tier        = tier;
   if (location)    r.location    = location;
+  if (distance)    r.distance    = distance;
   if (visitedDate) r.lastVisited = visitedDate;
+  r.reasons = reasons;
 
   const food    = parseInt(document.getElementById('rev-food')?.value)    || null;
   const vibe    = parseInt(document.getElementById('rev-vibe')?.value)    || null;

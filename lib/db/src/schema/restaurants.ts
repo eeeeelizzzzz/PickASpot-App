@@ -1,12 +1,13 @@
-import { pgTable, text, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, jsonb, timestamp } from "drizzle-orm/pg-core";
 
 export const restaurantsTable = pgTable("restaurants", {
   id:           text("id").primaryKey(),
   name:         text("name").notNull(),
   location:     text("location").notNull(),
   tier:         text("tier").notNull(),
+  distance:     text("distance").notNull().default(""),
   tags:         jsonb("tags").$type<string[]>().notNull().default([]),
-  acclaimed:    boolean("acclaimed").notNull().default(false),
+  reasons:      jsonb("reasons").$type<string[]>().notNull().default([]),
   dateSaved:    text("date_saved").notNull(),
   lastVisited:  text("last_visited"),
   bestSeasons:  jsonb("best_seasons").$type<string[]>().notNull().default([]),
