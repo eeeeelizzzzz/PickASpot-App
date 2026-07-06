@@ -1,7 +1,9 @@
 // ─── Data & Constants ────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'ok_eats_restaurants_v2';
-const API_BASE    = '/api/restaurants';
+const STORAGE_KEY    = 'ok_eats_restaurants_v2';
+const SHEET_URL_KEY  = 'ok_eats_sheet_url';
+const SHEET_SYNC_KEY = 'ok_eats_sheet_last_sync';
+const API_BASE       = '/api/restaurants';
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
@@ -846,6 +848,24 @@ function renderList() {
       </div>
     </div>
 
+    <div style="padding:0 20px 16px;">
+      <div class="ios-card" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">🔗</span>
+          <div style="font-size:14px;font-weight:600;color:#000;">Sync from Google Sheet</div>
+        </div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
+          Share a Sheet ("Anyone with the link can view"), paste its link below, and sync anytime to pull in edits — no export/import needed.
+        </div>
+        <input id="sheet-url-input" class="ios-input" type="text" placeholder="Paste Google Sheet link…" value="${escHtml(getSheetUrl())}" style="margin-bottom:8px;" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveSheetUrl()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Save Link</button>
+          <button onclick="syncFromSheet()" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Sync Now</button>
+        </div>
+        ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:8px;">Last synced: ${lastSheetSync()}</div>` : ''}
+      </div>
+    </div>
+
     <div style="padding:0 20px 32px;">
       ${groupsHtml}
     </div>
@@ -1460,6 +1480,54 @@ window.handleImportFile = function(input) {
     }
   };
   reader.readAsText(file);
+};
+
+// ─── Google Sheet Sync ──────────────────────────────────────────────────────────
+
+function getSheetUrl() {
+  return localStorage.getItem(SHEET_URL_KEY) || '';
+}
+
+function lastSheetSync() {
+  const ts = localStorage.getItem(SHEET_SYNC_KEY);
+  if (!ts) return 'never';
+  const d = new Date(Number(ts));
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+window.saveSheetUrl = function() {
+  const input = document.getElementById('sheet-url-input');
+  const url = (input?.value || '').trim();
+  localStorage.setItem(SHEET_URL_KEY, url);
+  showToast(url ? 'Sheet link saved' : 'Sheet link cleared');
+  renderList();
+};
+
+window.syncFromSheet = async function() {
+  const input = document.getElementById('sheet-url-input');
+  const url = (input?.value || getSheetUrl()).trim();
+  if (!url) {
+    showToast('Paste a Google Sheet link first');
+    return;
+  }
+  localStorage.setItem(SHEET_URL_KEY, url);
+  showToast('Syncing from sheet…');
+  const result = await apiCall(`${API_BASE}/sync-sheet`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+  if (!result || result.error) {
+    showToast(result?.error || 'Sync failed — check the link is shared publicly');
+    return;
+  }
+  localStorage.setItem(SHEET_SYNC_KEY, String(Date.now()));
+  const fresh = await apiCall(API_BASE);
+  if (Array.isArray(fresh)) {
+    state.restaurants = fresh;
+    saveRestaurants();
+  }
+  renderList();
+  showToast(`Synced ${result.synced} restaurants from sheet ✓`);
 };
 
 // ─── CSV Export / Import ────────────────────────────────────────────────────────
