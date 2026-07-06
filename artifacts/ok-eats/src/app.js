@@ -1594,7 +1594,7 @@ function rowToRestaurant(rowObj, existing) {
     name: rowObj.name || '',
     location: rowObj.location || '',
     tier: rowObj.tier || TIERS[0],
-    tags: (rowObj.tags || '').split(';').map(t => t.trim()).filter(Boolean),
+    tags: (rowObj.tags || '').split(/[;,]/).map(t => t.trim()).filter(Boolean),
     acclaimed: boolVal === 'TRUE' || boolVal === 'YES' || boolVal === '1',
     dateSaved: rowObj.dateSaved || existing?.dateSaved || today(),
     lastVisited: rowObj.lastVisited || null,

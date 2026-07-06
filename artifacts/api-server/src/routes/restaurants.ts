@@ -253,7 +253,7 @@ router.post("/restaurants/sync-sheet", async (req, res) => {
         name: obj.name.trim(),
         location: obj.location || existingRow?.location || "OKC",
         tier: obj.tier || existingRow?.tier || "The Fun Category",
-        tags: (obj.tags || "").split(";").map((t) => t.trim()).filter(Boolean),
+        tags: (obj.tags || "").split(/[;,]/).map((t) => t.trim()).filter(Boolean),
         acclaimed: boolVal === "TRUE" || boolVal === "YES" || boolVal === "1",
         dateSaved: obj.dateSaved || existingRow?.dateSaved || new Date().toISOString().slice(0, 10),
         lastVisited: obj.lastVisited || null,
