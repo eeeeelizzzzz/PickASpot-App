@@ -828,6 +828,22 @@ function renderList() {
           </div>
         </button>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="exportCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📊</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Export CSV</div>
+            <div style="font-size:11px;color:#8E8E93;">Edit in Sheets/Excel</div>
+          </div>
+        </button>
+        <button onclick="importCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📥</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Import CSV</div>
+            <div style="font-size:11px;color:#8E8E93;">Load edited sheet</div>
+          </div>
+        </button>
+      </div>
     </div>
 
     <div style="padding:0 20px 32px;">
@@ -1441,6 +1457,150 @@ window.handleImportFile = function(input) {
       showToast(`Imported: ${added} added, ${updated} updated`);
     } catch (err) {
       showToast('Import failed — invalid JSON format');
+    }
+  };
+  reader.readAsText(file);
+};
+
+// ─── CSV Export / Import ────────────────────────────────────────────────────────
+
+const CSV_COLUMNS = [
+  'id', 'name', 'location', 'tier', 'tags', 'acclaimed',
+  'dateSaved', 'lastVisited', 'food', 'vibe', 'service', 'parking', 'cost', 'notes'
+];
+
+function csvEscape(val) {
+  const s = val === null || val === undefined ? '' : String(val);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function restaurantToRow(r) {
+  return [
+    r.id,
+    r.name,
+    r.location,
+    r.tier,
+    (r.tags || []).join('; '),
+    r.acclaimed ? 'TRUE' : 'FALSE',
+    r.dateSaved || '',
+    r.lastVisited || '',
+    r.ratings?.food ?? '',
+    r.ratings?.vibe ?? '',
+    r.ratings?.service ?? '',
+    r.ratings?.parking ?? '',
+    r.ratings?.cost ?? '',
+    r.notes || '',
+  ];
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+
+function rowToRestaurant(rowObj, existing) {
+  const num = (v) => (v === '' || v === undefined || v === null) ? null : Number(v);
+  const boolVal = String(rowObj.acclaimed || '').trim().toUpperCase();
+  return {
+    id: rowObj.id && rowObj.id.trim() ? rowObj.id.trim() : genId(),
+    name: rowObj.name || '',
+    location: rowObj.location || '',
+    tier: rowObj.tier || TIERS[0],
+    tags: (rowObj.tags || '').split(';').map(t => t.trim()).filter(Boolean),
+    acclaimed: boolVal === 'TRUE' || boolVal === 'YES' || boolVal === '1',
+    dateSaved: rowObj.dateSaved || existing?.dateSaved || today(),
+    lastVisited: rowObj.lastVisited || null,
+    ratings: {
+      food: num(rowObj.food),
+      vibe: num(rowObj.vibe),
+      service: num(rowObj.service),
+      parking: rowObj.parking || null,
+      cost: rowObj.cost || null,
+    },
+    notes: rowObj.notes || '',
+  };
+}
+
+window.exportCSV = function() {
+  const lines = [CSV_COLUMNS.map(csvEscape).join(',')];
+  state.restaurants.forEach(r => {
+    lines.push(restaurantToRow(r).map(csvEscape).join(','));
+  });
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ok-eats-${today()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${state.restaurants.length} restaurants to CSV`);
+};
+
+window.importCSV = function() {
+  const input = document.getElementById('import-csv-file-input');
+  if (input) { input.value = ''; input.click(); }
+};
+
+window.handleImportCSVFile = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const rows = parseCSV(e.target.result);
+      if (rows.length < 2) throw new Error('No data rows found');
+      const header = rows[0].map(h => h.trim());
+      const dataRows = rows.slice(1);
+
+      const existingIds = new Map(state.restaurants.map(r => [r.id, r]));
+      let added = 0, updated = 0;
+      const parsedList = [];
+
+      dataRows.forEach(cells => {
+        const rowObj = {};
+        header.forEach((h, i) => { rowObj[h] = cells[i] !== undefined ? cells[i] : ''; });
+        if (!rowObj.name || !rowObj.name.trim()) return;
+
+        const existing = rowObj.id ? existingIds.get(rowObj.id.trim()) : null;
+        const parsed = rowToRestaurant(rowObj, existing);
+        parsedList.push(parsed);
+
+        if (existing) {
+          Object.assign(existing, parsed);
+          updated++;
+        } else {
+          state.restaurants.push(parsed);
+          added++;
+        }
+      });
+
+      saveRestaurants();
+      apiBulk(parsedList).then(() => showToast(`Synced to server ✓`));
+      renderList();
+      showToast(`Imported: ${added} added, ${updated} updated`);
+    } catch (err) {
+      showToast('Import failed — invalid CSV format');
     }
   };
   reader.readAsText(file);
