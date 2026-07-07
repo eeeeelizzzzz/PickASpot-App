@@ -11,6 +11,7 @@ import {
   mountMapView,
   syncMapView,
   updateMapFilter,
+  createDefaultAreaFilter,
   invalidateMapSize,
   clearMapArea,
   isMapReady,
@@ -1065,7 +1066,8 @@ function renderHelp() {
       ${helpSection('Map &amp; area filter', `
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">Open the <strong>Map</strong> tab — pins appear for restaurants with addresses.</li>
-          <li style="margin-bottom:8px;">Tap the <strong>rectangle</strong> tool (top-right), then drag a box on the map.</li>
+          <li style="margin-bottom:8px;">Tap <strong>Add area filter</strong> — a box appears on the map.</li>
+          <li style="margin-bottom:8px;">Drag the <strong>corners</strong> to resize, or drag the <strong>box</strong> to move it.</li>
           <li style="margin-bottom:8px;">Only restaurants inside the box are used on <strong>Discover</strong> when you tap Find Food.</li>
           <li>Tap <strong>Clear area</strong> on the map or Discover to remove the filter.</li>
         </ol>
@@ -1170,10 +1172,13 @@ function updateMapToolbar(statusText) {
       <div id="map-status" style="font-size:12px;color:#8E8E93;line-height:1.4;margin-bottom:8px;">
         ${escHtml(statusText || (state.mapFilter
           ? `${inArea} places in selected area · ${pinned} on map`
-          : `${pinned} places mapped · draw a box to filter Discover`))}
+          : `${pinned} places mapped · add an area filter below`))}
       </div>
+      ${state.mapFilter ? `<div style="font-size:11px;color:#8E8E93;line-height:1.4;margin-bottom:8px;">Drag corners or move the box to adjust the area.</div>` : ''}
       <div style="display:flex;gap:8px;">
-        ${state.mapFilter ? `<button onclick="clearMapAreaFilter()" style="flex:1;background:#F2F2F7;color:#007AFF;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Clear area</button>` : ''}
+        ${state.mapFilter
+          ? `<button onclick="clearMapAreaFilter()" style="flex:1;background:#F2F2F7;color:#007AFF;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Clear area</button>`
+          : `<button onclick="createMapAreaFilter()" style="flex:1;background:#F2F2F7;color:#007AFF;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Add area filter</button>`}
         <button onclick="switchTab('discover')" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">
           ${state.mapFilter ? 'Pick from area' : 'Discover'}
         </button>
@@ -1194,7 +1199,6 @@ async function renderMap() {
     onBoundsChange: (bounds) => {
       state.mapFilter = bounds;
       state.results = null;
-      updateMapFilter(state.restaurants, state.mapFilter);
       updateMapToolbar();
       if (state.tab === 'discover') renderDiscover();
     },
@@ -1221,11 +1225,20 @@ async function renderMap() {
   await invalidateMapSize();
 }
 
+window.createMapAreaFilter = function() {
+  if (!createDefaultAreaFilter()) {
+    showToast('Open the Map tab first');
+    return;
+  }
+  showToast('Drag corners or move the box to adjust');
+};
+
 window.clearMapAreaFilter = function() {
   state.mapFilter = null;
   state.results = null;
   clearMapArea();
-  renderMap();
+  updateMapFilter(state.restaurants, null);
+  updateMapToolbar();
   if (state.tab === 'discover') renderDiscover();
   showToast('Map area filter cleared');
 };
