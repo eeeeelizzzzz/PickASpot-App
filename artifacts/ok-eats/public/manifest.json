@@ -1,7 +1,7 @@
 {
-  "name": "OK Eats",
-  "short_name": "OK Eats",
-  "description": "Oklahoma Restaurant Recommendations",
+  "name": "Pick A Spot",
+  "short_name": "Pick A Spot",
+  "description": "Where do you wanna eat?",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#F2F2F7",

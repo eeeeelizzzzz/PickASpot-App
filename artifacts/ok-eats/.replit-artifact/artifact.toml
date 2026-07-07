@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "OK Eats"
+title = "Pick A Spot"
 version = "1.0.0"
 id = "artifacts/ok-eats"
 router = "path"

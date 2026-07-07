@@ -1,4 +1,4 @@
-const CACHE = 'ok-eats-v2';
+const CACHE = 'pick-a-spot-v1';
 const PRECACHE = ['index.html', 'src/app.js', 'icon.jpg'];
 
 self.addEventListener('install', e => {

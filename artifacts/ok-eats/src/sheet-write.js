@@ -1,5 +1,5 @@
-const SHEET_WRITE_URL_KEY = 'ok_eats_sheet_write_url';
-const SHEET_WRITE_SECRET_KEY = 'ok_eats_sheet_write_secret';
+const SHEET_WRITE_URL_KEY = 'pick_a_spot_sheet_write_url';
+const SHEET_WRITE_SECRET_KEY = 'pick_a_spot_sheet_write_secret';
 
 export function getSheetWriteUrl() {
   return localStorage.getItem(SHEET_WRITE_URL_KEY) || '';

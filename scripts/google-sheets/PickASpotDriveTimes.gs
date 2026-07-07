@@ -1,18 +1,18 @@
 /**
- * OK Eats — Google Sheets drive-time calculator
+ * Pick A Spot — Google Sheets drive-time calculator
  *
  * Full setup (import example CSV, install this script, connect the app):
- *   scripts/google-sheets/SETUP.md in the OK Eats GitHub repo
+ *   scripts/google-sheets/SETUP.md in the Pick A Spot GitHub repo
  *
  * Quick start:
  * 1. Open your restaurant spreadsheet → Extensions → Apps Script
  * 2. Paste this file (replace default Code.gs contents)
  * 3. Run setupConfigSheet once (or create Config sheet manually)
  * 4. Enter your home address in Config!B1
- * 5. Reload the spreadsheet — menu OK Eats → Update all drive times
+ * 5. Reload the spreadsheet — menu Pick A Spot → Update all drive times
  *
  * Address lookup:
- *   OK Eats → Look up missing addresses (fills empty address cells from name + location)
+ *   Pick A Spot → Look up missing addresses (fills empty address cells from name + location)
  *
  * Required columns on the Restaurants sheet (row 1 headers):
  *   address, driveTimeMin, distance
@@ -41,7 +41,7 @@ var NORMAN_BBOX = {
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('OK Eats')
+    .createMenu('Pick A Spot')
     .addItem('Look up missing addresses', 'lookupAllAddresses')
     .addItem('Look up addresses (selected rows)', 'lookupSelectedAddresses')
     .addSeparator()
@@ -78,7 +78,7 @@ function setupConfigSheet() {
     'Config sheet ready.\n\n' +
     '1. Edit Config!' + HOME_CELL + ' with your home address\n' +
     '2. Copy Config!' + SECRET_CELL + ' into the app (Sheet write-back)\n' +
-    '3. Deploy → New deployment → Web app (see OK Eats → Show write-back setup)'
+    '3. Deploy → New deployment → Web app (see Pick A Spot → Show write-back setup)'
   );
 }
 
@@ -91,8 +91,8 @@ function getSecret_() {
 
 function showWriteBackSetup() {
   SpreadsheetApp.getUi().alert(
-    'Write changes from the OK Eats app back to this sheet:\n\n' +
-    '1. Run OK Eats → Set up Config sheet (creates secret in Config!' + SECRET_CELL + ')\n' +
+    'Write changes from the Pick A Spot app back to this sheet:\n\n' +
+    '1. Run Pick A Spot → Set up Config sheet (creates secret in Config!' + SECRET_CELL + ')\n' +
     '2. Deploy → New deployment → Type: Web app\n' +
     '   Execute as: Me\n' +
     '   Who has access: Anyone\n' +
@@ -217,7 +217,7 @@ function getHomeAddress_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var config = ss.getSheetByName(CONFIG_SHEET);
   if (!config) {
-    throw new Error('Missing Config sheet. Run OK Eats → Set up Config sheet first.');
+    throw new Error('Missing Config sheet. Run Pick A Spot → Set up Config sheet first.');
   }
   var home = String(config.getRange(HOME_CELL).getValue() || '').trim();
   if (!home) {

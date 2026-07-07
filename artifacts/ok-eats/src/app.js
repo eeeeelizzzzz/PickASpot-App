@@ -23,11 +23,14 @@ import {
   deleteRestaurantFromSheet,
 } from './sheet-write.js';
 
-const STORAGE_KEY       = 'ok_eats_restaurants_v2';
-const SHEET_URL_KEY     = 'ok_eats_sheet_url';
-const SHEET_SYNC_KEY    = 'ok_eats_sheet_last_sync';
-const HOME_ADDRESS_KEY  = 'ok_eats_home_address';
-const GEO_CACHE_KEY     = 'ok_eats_geo_cache';
+const APP_NAME = 'Pick A Spot';
+const APP_TAGLINE = 'Where do you wanna eat?';
+
+const STORAGE_KEY       = 'pick_a_spot_restaurants_v2';
+const SHEET_URL_KEY     = 'pick_a_spot_sheet_url';
+const SHEET_SYNC_KEY    = 'pick_a_spot_sheet_last_sync';
+const HOME_ADDRESS_KEY  = 'pick_a_spot_home_address';
+const GEO_CACHE_KEY     = 'pick_a_spot_geo_cache';
 const USE_API        = import.meta.env.VITE_USE_API === 'true';
 const API_BASE       = import.meta.env.VITE_API_BASE || '/api/restaurants';
 const GITHUB_REPO_URL = import.meta.env.VITE_GITHUB_REPO_URL || '';
@@ -419,8 +422,8 @@ function renderDiscover() {
     <div style="padding:20px 20px 12px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
         <div>
-          <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;line-height:1.1;">OK Eats</div>
-          <div style="font-size:14px;color:#8E8E93;margin-top:2px;font-weight:400;">What are you in the mood for?</div>
+          <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;line-height:1.1;">${APP_NAME}</div>
+          <div style="font-size:14px;color:#8E8E93;margin-top:2px;font-weight:400;">${APP_TAGLINE}</div>
           ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:4px;">Sheet last synced: ${lastSheetSync()}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
@@ -766,7 +769,7 @@ function renderList() {
         </div>
         <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
           Optional fallback if you don't use the sheet Apps Script. For drive times, use
-          <strong>OK Eats → Update all drive times</strong> in Google Sheets instead.
+          <strong>Pick A Spot → Update all drive times</strong> in Google Sheets instead.
         </div>
         <input id="home-address-input" class="ios-input" type="text" placeholder="e.g. 123 Main St, Norman, OK" value="${escHtml(getHomeAddress())}" style="margin-bottom:8px;" />
         <div style="display:flex;gap:8px;">
@@ -831,16 +834,16 @@ function renderHelp() {
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
       <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">How To</div>
-      <div style="font-size:14px;color:#8E8E93;">Quick guide to using OK Eats</div>
+      <div style="font-size:14px;color:#8E8E93;">Quick guide to using ${APP_NAME}</div>
     </div>
 
     <div style="padding:0 20px 32px;">
-      ${helpSection('Run your own OK Eats', `
+      ${helpSection('Run your own Pick A Spot', `
         <p style="margin:0 0 10px;">Use this app with <strong>your own</strong> Google Sheet — no fork required. Or fork the repo and deploy your own copy on GitHub Pages.</p>
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">Import <strong>example-restaurants.csv</strong> from the repo into a new Google Sheet (see README → Sheet setup).</li>
-          <li style="margin-bottom:8px;">Paste <strong>OkEatsDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
-          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>My List</strong> on any OK Eats deployment.</li>
+          <li style="margin-bottom:8px;">Paste <strong>PickASpotDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
+          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>My List</strong> on any Pick A Spot deployment.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
           Full steps: <strong>scripts/google-sheets/SETUP.md</strong> in the GitHub repo.
@@ -850,7 +853,7 @@ function renderHelp() {
       ${helpSection('Write to your Google Sheet', `
         <p style="margin:0 0 10px;">New restaurants and visit updates can save back to the sheet automatically.</p>
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">In Google Sheets: <strong>OK Eats → Set up Config sheet</strong> (creates secret in <strong>Config!B2</strong>).</li>
+          <li style="margin-bottom:8px;">In Google Sheets: <strong>Pick A Spot → Set up Config sheet</strong> (creates secret in <strong>Config!B2</strong>).</li>
           <li style="margin-bottom:8px;"><strong>Deploy → New deployment → Web app</strong> — Execute as: Me, Who has access: Anyone.</li>
           <li style="margin-bottom:8px;">In the app <strong>My List</strong>, paste the Web app URL and secret under <strong>Sheet write-back</strong>.</li>
         </ol>
@@ -861,7 +864,7 @@ function renderHelp() {
 
       ${helpSection('Sync from your Google Sheet', `
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>OK Eats → Update all drive times</strong> in the sheet (see README).</li>
+          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>Pick A Spot → Update all drive times</strong> in the sheet (see README).</li>
           <li style="margin-bottom:8px;">Share your sheet as <strong>Anyone with the link can view</strong>.</li>
           <li style="margin-bottom:8px;">Go to <strong>My List</strong>, paste the sheet link, and tap <strong>Save Link</strong>.</li>
           <li>Tap <strong>Sync Now</strong> on Discover or My List whenever you want to pull in sheet edits.</li>
@@ -881,7 +884,7 @@ function renderHelp() {
           <li><strong>Destination</strong> — over ${DRIVE_LONGER_MAX} minutes</li>
         </ul>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          In the sheet: <strong>OK Eats → Update all drive times</strong>. Optional: set a home address here and tap <strong>Update Drive Times</strong> only if you skip the script.
+          In the sheet: <strong>Pick A Spot → Update all drive times</strong>. Optional: set a home address here and tap <strong>Update Drive Times</strong> only if you skip the script.
         </p>
       `)}
 
@@ -932,7 +935,7 @@ function renderHelp() {
       <div class="ios-card" style="padding:16px;text-align:center;">
         <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:6px;">Source &amp; feedback</div>
         <div style="font-size:14px;color:#8E8E93;margin-bottom:12px;line-height:1.5;">
-          OK Eats is open source.${GITHUB_REPO_URL ? ' Report issues or view the code on GitHub.' : ''}
+          ${APP_NAME} is open source.${GITHUB_REPO_URL ? ' Report issues or view the code on GitHub.' : ''}
         </div>
         ${GITHUB_REPO_URL ? `<a href="${escHtml(GITHUB_REPO_URL)}" target="_blank" rel="noopener noreferrer"
            style="display:inline-block;background:#007AFF;color:white;text-decoration:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;">
@@ -976,7 +979,7 @@ function updateMapToolbar(statusText) {
 let mapSyncToken = 0;
 
 async function renderMap() {
-  const mapEl = document.getElementById('ok-eats-map');
+  const mapEl = document.getElementById('pick-a-spot-map');
   if (!mapEl) return;
 
   updateMapToolbar();
@@ -1656,7 +1659,7 @@ window.exportData = function() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ok-eats-${today()}.json`;
+  a.download = `pick-a-spot-${today()}.json`;
   a.click();
   URL.revokeObjectURL(url);
   showToast(`Exported ${state.restaurants.length} restaurants`);
@@ -1933,7 +1936,7 @@ window.exportCSV = function() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ok-eats-${today()}.csv`;
+  a.download = `pick-a-spot-${today()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   showToast(`Exported ${state.restaurants.length} restaurants to CSV`);
@@ -2032,7 +2035,8 @@ async function init() {
   const discoverEl = document.getElementById('page-discover');
   discoverEl.innerHTML = `
     <div style="padding:80px 20px;text-align:center;">
-      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:8px;">OK Eats</div>
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">${APP_NAME}</div>
+      <div style="font-size:14px;color:#8E8E93;margin-bottom:8px;">${APP_TAGLINE}</div>
       <div style="font-size:14px;color:#8E8E93;">Loading your list…</div>
     </div>`;
 

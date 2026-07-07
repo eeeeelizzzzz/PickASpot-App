@@ -1,35 +1,37 @@
-# OK Eats
+# Pick A Spot
 
-Oklahoma City–area restaurant recommendations for couples. Filter by location, tags, and tier; get scored picks; log visits; and sync your list from a Google Sheet.
+*Where do you wanna eat?*
 
-Static PWA on GitHub Pages — no server required. Your Google Sheet is the database.
+Dreaded question right? This tool makes it a little easier by making restaurant recommendations. Filter by location, tags, and tier; get scored picks; log visits; and sync your list from a Google Sheet.
+
+Static PWA on GitHub Pages — no server required. Your Google Sheet is the database. 
 
 ## Live demo
 
-[https://eeeeelizzzzz.github.io/Pick_a_Spot/](https://eeeeelizzzzz.github.io/Pick_a_Spot/)
+[https://eeeeelizzzzz.github.io/PickASpot-App/](https://eeeeelizzzzz.github.io/PickASpot-App/)
 
 ## Use the demo app with your sheet
 
 You do **not** need to fork this repo or deploy your own app if you only want your own restaurant list.
 
 1. **Create a Google Sheet** — import the [example CSV](scripts/google-sheets/example-restaurants.csv) and install [Apps Script](scripts/google-sheets/SETUP.md) (full steps in the [setup guide](scripts/google-sheets/SETUP.md)).
-2. **Open the [demo app](https://eeeeelizzzzz.github.io/Pick_a_Spot/)** on any device.
+2. **Open the [demo app](https://eeeeelizzzzz.github.io/PickASpot-App/)** on any device.
 3. In **My List**, paste **your** sheet link → **Save Link** → **Sync Now**.
 4. Optional: paste your Apps Script **Web app URL** and **Config!B2** secret under **Sheet write-back** so visits and new restaurants save back to the sheet.
 
-Your data lives in **your** Google Sheet. The OK Eats app is just a client — sheet link and write-back settings are stored in the browser on each device, not in this repo.
+Your data lives in **your** Google Sheet. Pick A Spot is just a client — sheet link and write-back settings are stored in the browser on each device, not in this repo.
 
-To host your own copy of the app (custom URL, branding), see [Run your own OK Eats](#run-your-own-ok-eats) below.
+To host your own copy of the app (custom URL, branding), see [Run your own Pick A Spot](#run-your-own-pick-a-spot) below.
 
 ---
 
 ## Quick start (your own sheet, our demo app)
 
 1. **Create a sheet** — import [`scripts/google-sheets/example-restaurants.csv`](scripts/google-sheets/example-restaurants.csv) into [Google Sheets](https://sheets.google.com). Full steps: [**Sheet setup guide**](scripts/google-sheets/SETUP.md).
-2. **Install Apps Script** — paste [`scripts/google-sheets/OkEatsDriveTimes.gs`](scripts/google-sheets/OkEatsDriveTimes.gs) into **Extensions → Apps Script** on that spreadsheet.
-3. In the sheet: **OK Eats → Set up Config sheet**, set home address in **Config!B1**, run **Look up missing addresses** and **Update all drive times**.
+2. **Install Apps Script** — paste [`scripts/google-sheets/PickASpotDriveTimes.gs`](scripts/google-sheets/PickASpotDriveTimes.gs) into **Extensions → Apps Script** on that spreadsheet.
+3. In the sheet: **Pick A Spot → Set up Config sheet**, set home address in **Config!B1**, run **Look up missing addresses** and **Update all drive times**.
 4. **Share** the sheet: *Anyone with the link can view*.
-5. Open the [demo app](https://eeeeelizzzzz.github.io/Pick_a_Spot/) → **My List** → paste sheet link → **Sync Now**.
+5. Open the [demo app](https://eeeeelizzzzz.github.io/PickASpot-App/) → **My List** → paste sheet link → **Sync Now**.
 6. Optional write-back: [deploy the script as a Web app](scripts/google-sheets/SETUP.md#deploy-write-back-web-app), then paste URL + **Config!B2** secret under **Sheet write-back**.
 
 ---
@@ -45,7 +47,7 @@ To publish a template for others: build a sheet from the CSV + Apps Script, shar
 
 ---
 
-## Run your own OK Eats
+## Run your own Pick A Spot
 
 Fork this repo to host your own branded copy on GitHub Pages.
 
@@ -64,7 +66,7 @@ Your app will be at:
 
 ### 2. Create your Google Sheet
 
-Follow [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/SETUP.md) — import the example CSV, paste `OkEatsDriveTimes.gs`, configure **Config**.
+Follow [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/SETUP.md) — import the example CSV, paste `PickASpotDriveTimes.gs`, configure **Config**.
 
 ### 3. Connect your deployed app
 
