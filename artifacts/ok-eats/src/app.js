@@ -1008,7 +1008,7 @@ function renderHelp() {
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">On <strong>Discover</strong>, set filters (location, distance, tags, reasons).</li>
           <li style="margin-bottom:8px;">Tap <strong>Find Food</strong> for three scored picks.</li>
-          <li>Tap <strong>Spin Again</strong> to reshuffle from the same pool.</li>
+          <li>Tap <strong>Spin Again</strong> to draw a new random 3 from the same top 10 (no re-scoring).</li>
         </ol>
       `)}
 

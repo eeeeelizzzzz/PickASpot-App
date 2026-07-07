@@ -2,7 +2,7 @@
 
 *Where do you wanna eat?*
 
-Pick A Spot is a **Progressive Web App** for restaurant recommendations — installable on your home screen , iOS-inspired UI, no app store – just a static PWA on Github Pages. No server required. Filter your list, get scored picks, log visits, and manage everything from a [**Google Sheet you control**](#google-sheet-setup) (_recommended_) or [**in the browser only**](#local-data-only).
+Pick A Spot is a **Progressive Web App** for restaurant recommendations — installable on your home screen, iOS-inspired UI, no app store — just a static PWA on GitHub Pages. No server required. Filter your list, get scored picks, log visits, and manage everything from a [**Google Sheet you control**](#google-sheet-setup) (_recommended_) or [**in the browser only**](#local-data-only).
 
 **Live app:** [eeeeelizzzzz.github.io/PickASpot-App](https://eeeeelizzzzz.github.io/PickASpot-App/)  
 
@@ -34,19 +34,19 @@ Add to your home screen for a standalone PWA (`manifest.json` + service worker).
 
 ### How picks work (short version)
 
-**Find Food** filters your list, scores what matches, keeps the **top 10**, and picks **3** at random. **Spin Again** reshuffles those three without re-scoring. Favorites and places you have not visited lately score higher; recently visited spots score lower. See [Scoring](#scoring) for the full rules and point table.
+**Find Food** filters your list, scores what matches, keeps the **top 10**, and picks **3** at random. **Spin Again** draws a new random **3** from that same top 10 — without re-filtering or re-scoring. Favorites and places you have not visited lately score higher; recently visited spots score lower. See [Scoring](#scoring) for the full rules and point table.
 
 ---
 
 ## Getting started
 
-You do **not** need to fork this repo. Open the [live app](https://eeeeelizzzzz.github.io/PickASpot-App/) and choose a path:
+You do **not** have to fork this repo to use the app. Open the [live app](https://eeeeelizzzzz.github.io/PickASpot-App/) and choose a path:
 
 ### Recommended: Google Sheet
 
 Best if you want one list across devices (or users) and a spreadsheet you can edit directly. Technical details: [Google Sheet setup](#google-sheet-setup) · [How sync works](#how-sync-works)
 
-1. **Set up a sheet** — import [`example-restaurants.csv`](scripts/google-sheets/example-restaurants.csv), install [`PickASpotDriveTimes.gs`](scripts/google-sheets/PickASpotDriveTimes.gs), configure drive times. Full walkthrough: [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/SETUP.md) (or the [summary checklist](#google-sheet-setup) below).
+1. **Set up a sheet** — copy the [template sheet](https://docs.google.com/spreadsheets/d/1pfqR5V4FRgvMyLmPOguxkgPgFG10zJJazSDfuozXkSM/edit?usp=sharing) (**File → Make a copy**), or import [`example-restaurants.csv`](scripts/google-sheets/example-restaurants.csv), install [`PickASpotDriveTimes.gs`](scripts/google-sheets/PickASpotDriveTimes.gs), configure drive times. Full walkthrough: [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/SETUP.md) (or the [summary checklist](#google-sheet-setup) below).
 2. **Pull into Pick A Spot** — **Settings** → paste your sheet link → **Save Link** → **Sync Now**. See [How sync works → Sheet → app](#how-sync-works).
 3. **Save back to the sheet** — **Settings → Save to Google Sheet** → paste your Apps Script Web app URL and **Config!B2** secret ([deploy instructions](scripts/google-sheets/SETUP.md#deploy-write-back-web-app)). New restaurants and visit logs then push to the sheet when you save in the app. See [How sync works → App → sheet](#how-sync-works).
 
@@ -78,7 +78,7 @@ Step-by-step guide: [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/S
 | Method | Link |
 |--------|------|
 | **Import CSV** | [`scripts/google-sheets/example-restaurants.csv`](scripts/google-sheets/example-restaurants.csv) |
-| **Copy published template** | *Maintainer: add a “Make a copy” Google Sheets link here after publishing* |
+| **Copy template sheet** | [Pick A Spot template](https://docs.google.com/spreadsheets/d/1pfqR5V4FRgvMyLmPOguxkgPgFG10zJJazSDfuozXkSM/edit?usp=sharing) — open → **File → Make a copy** |
 
 ### How sync works
 
@@ -104,14 +104,13 @@ Pick A Spot always works from a **local copy** in the browser. Sync moves data b
 id, name, location, tier, tags, reasons, address, distance, driveTimeMin, dateSaved, lastVisited, food, vibe, service, parking, cost, notes
 ```
 
+- **`id`** — stable row ID used to match the same restaurant across sync and save-back. You can set your own (e.g. `r001`) or leave blank and let the app assign one automatically (e.g. `r1730912345k7x2`) when you add a row or sync. Keep IDs stable once a place exists in both the sheet and the app.
 - `tags` / `reasons` — separate multiple values with `;`
-- `driveTimeMin` / `distance` — filled by Apps Script from **Config!B1**
+- `driveTimeMin` / `distance` — filled by Apps Script from **Config!B1** (not computed in [local data only](#local-data-only) mode)
 
-**Drive-time labels** (automated in Google Sheets from Apps Script):
+**Drive-time labels** (computed in Google Sheets by Apps Script — not in [local data only](#local-data-only) mode):
 
 <a id="drive-time-labels-from-apps-script"></a>
-
-_If you are working with local data, you will need to enter times/labels yourself!_
 
 | Label | Rule |
 |-------|------|
@@ -131,10 +130,13 @@ _If you are working with local data, you will need to enter times/labels yoursel
 
 ## Local data only
 
+*← Back to [Getting started → Alternative](#alternative-browser-only)*
+
 Use Pick A Spot without any Google account or sheet:
 
 - Add restaurants on **List**, log visits on **History**, pick on **Discover** — all from data in **local storage** on that browser/device.
 - Nothing syncs to other phones, tablets, or computers automatically.
+- **No sheet-side automation** — drive times, distance labels, and address geocoding from Apps Script are not available. Enter `distance`, `driveTimeMin`, and `address` yourself if you use those filters or the map.
 - **Export** JSON or CSV to back up; **Import** on another device to restore.
 - To switch to a sheet later: export CSV, import into Google Sheets, then follow [Google Sheet setup](#google-sheet-setup) (or [Getting started → Recommended](#recommended-google-sheet)).
 
@@ -151,7 +153,7 @@ When you tap **Find Food**:
 1. **Filter** — restaurants must match all selected tags and reasons; optional map-area filter applies.
 2. **Score** — each match gets points (table below).
 3. **Rank** — sort by score, keep the **top 10**.
-4. **Pick 3** — random sample from that top 10. **Spin Again** reshuffles within the same top 10.
+4. **Pick 3** — random sample of **3** from that top 10. **Spin Again** draws a new random **3** from the same top 10 without re-filtering or re-scoring.
 
 Scores show on result cards. Color bands: green (7+), blue (4–6), orange (0–3), red (negative).
 
@@ -175,7 +177,9 @@ Implementation: [`scoreRestaurant()`](artifacts/ok-eats/src/app.js) and [`findRe
 
 *← Back to [Getting started → Host your own copy](#host-your-own-copy)*
 
-Fork this repo to host a branded copy or develop locally. For using the official app with your own sheet instead, you only need [Getting started](#getting-started) — no fork required.
+Fork this repo to host a branded copy or develop locally. For using the official app with your own data instead, see [Getting started](#getting-started) — no fork required.
+
+> **Note:** The steps below are for deploying on **GitHub Pages**. Other hosts (Netlify, Cloudflare Pages, your own server, etc.) work too — run `pnpm --filter @workspace/ok-eats run build` with the right `BASE_PATH` and serve `artifacts/ok-eats/dist/public`.
 
 ### GitHub Pages
 
@@ -187,7 +191,7 @@ App URL: `https://<username>.github.io/<repo-name>/`
 
 > Repo named `<username>.github.io`? Set `BASE_PATH` to `/` in [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
 
-Then [set up your Google Sheet](#google-sheet-setup) and connect it in **Settings** on your deployed URL.
+Then choose [Google Sheet setup](#google-sheet-setup) (connect in **Settings** on your deployed URL) or [local data only](#local-data-only) (no sheet setup required).
 
 ---
 
@@ -203,4 +207,4 @@ Then [set up your Google Sheet](#google-sheet-setup) and connect it in **Setting
 
 ## License
 
-MIT — use, fork, and adapt for your own city or sheet.
+MIT — use, fork, and adapt for your own city, data, and preferences.
