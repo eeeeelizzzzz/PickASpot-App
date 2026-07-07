@@ -177,9 +177,33 @@ Implementation: [`scoreRestaurant()`](artifacts/ok-eats/src/app.js) and [`findRe
 
 *← Back to [Getting started → Host your own copy](#host-your-own-copy)*
 
-Fork this repo to host a branded copy or develop locally. For using the official app with your own data instead, see [Getting started](#getting-started) — no fork required.
+Fork this repo to host it yourself or develop locally. For using the official app with your own data instead, see [Getting started](#getting-started) — no fork required.
 
-> **Note:** The steps below are for deploying on **GitHub Pages**. Other hosts (Netlify, Cloudflare Pages, your own server, etc.) work too — run `pnpm --filter @workspace/ok-eats run build` with the right `BASE_PATH` and serve `artifacts/ok-eats/dist/public`.
+### Prerequisites
+
+| Requirement | Notes |
+|-------------|--------|
+| **Node.js 24+** | Matches [CI](.github/workflows/deploy-pages.yml) |
+| **pnpm 9.15.9** | Required — `corepack enable` then `corepack prepare pnpm@9.15.9 --activate` |
+| **Static hosting** | Production is static files only — no Node server at runtime |
+
+**Optional at runtime** (features still work without these, with limits):
+
+- **Google Sheets + Apps Script** — [recommended data path](#google-sheet-setup)
+- **OpenStreetMap** — map tiles on the **Map** tab
+- **Photon / OSRM** (public APIs) — only if you use **Settings → Update Drive Times** without the sheet script; [local data only](#local-data-only) has no drive-time automation
+
+### Local development
+
+```bash
+pnpm install
+PORT=5173 BASE_PATH=/ pnpm --filter @workspace/ok-eats run build   # production build
+PORT=5173 BASE_PATH=/ pnpm --filter @workspace/ok-eats run dev      # dev server
+```
+
+Open `http://localhost:5173`. For a subpath deploy (e.g. GitHub Pages), set `BASE_PATH` to `/<repo-name>/` when building — same as CI.
+
+> **Note:** The steps below are for deploying on **GitHub Pages**. Other hosts (Netlify, Cloudflare Pages, your own server, etc.) work too — build with the correct `BASE_PATH` and serve `artifacts/ok-eats/dist/public`.
 
 ### GitHub Pages
 
