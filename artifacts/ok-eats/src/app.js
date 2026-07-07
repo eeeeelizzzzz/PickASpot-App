@@ -773,7 +773,7 @@ function renderList() {
         <div class="ios-card" style="padding:32px 20px;text-align:center;">
           <div style="font-size:40px;margin-bottom:10px;">🍽️</div>
           <div style="font-size:16px;font-weight:600;color:#000;margin-bottom:4px;">No restaurants yet</div>
-          <div style="font-size:13px;color:#8E8E93;">Add one above, sync from Settings, or import a file.</div>
+          <div style="font-size:13px;color:#8E8E93;">Add one above, sync from Setup, or import a file.</div>
         </div>`;
     } else if (search) {
       groupsHtml = `
@@ -828,18 +828,11 @@ function renderList() {
   `;
 }
 
-// ─── Render: Settings Tab ───────────────────────────────────────────────────
+// ─── Settings panel (Setup tab) ─────────────────────────────────────────────
 
-function renderSettings() {
-  const el = document.getElementById('page-settings');
-
-  el.innerHTML = `
-    <div style="padding:20px 20px 12px;">
-      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">Settings</div>
-      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Sync with Google Sheets, connect sheet saving, and import/export data.</div>
-    </div>
-
-    <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px;">
+function settingsPanelHtml() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:12px;">
       <div class="ios-card" style="padding:14px 16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:16px;">🔗</span>
@@ -862,7 +855,7 @@ function renderSettings() {
           <div style="font-size:14px;font-weight:600;color:#000;">Save to Google Sheet</div>
         </div>
         <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
-          Push new restaurants and visit logs from Pick A Spot to your sheet. First deploy the spreadsheet's Apps Script as a Web app (How To), then paste that URL and <strong>Config!B2</strong> here.
+          Push new restaurants and visit logs from Pick A Spot to your sheet. First deploy the spreadsheet's Apps Script as a Web app (see Configuration below), then paste that URL and <strong>Config!B2</strong> here.
         </div>
         <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script Web app URL (not your sheet link)…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
         <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret from Config!B2…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
@@ -889,18 +882,7 @@ function renderSettings() {
       </div>
 
       ${restaurantActionsHtml()}
-
-      <button onclick="switchTab('help'); setTimeout(() => { const el = document.getElementById('help-configuration'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 50);"
-        style="background:white;border:none;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;margin-top:4px;">
-        <div style="text-align:left;">
-          <div style="font-size:15px;font-weight:600;color:#000;">How to configure your setup</div>
-          <div style="font-size:12px;color:#8E8E93;">Google Sheet sync &amp; save settings</div>
-        </div>
-        <span style="color:#007AFF;font-size:18px;">›</span>
-      </button>
     </div>
-
-    <div style="padding-bottom:32px;"></div>
   `;
 }
 
@@ -984,7 +966,16 @@ function renderAbout() {
   `;
 }
 
-// ─── Render: Help Tab ─────────────────────────────────────────────────────────
+window.scrollToSetupSettings = function() {
+  const wasOnSetup = state.tab === 'help';
+  if (!wasOnSetup) switchTab('help');
+  setTimeout(() => {
+    const target = document.getElementById('setup-settings');
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  }, wasOnSetup ? 0 : 50);
+};
+
+// ─── Render: Setup Tab ────────────────────────────────────────────────────────
 
 function helpSection(title, bodyHtml, anchorId) {
   const idAttr = anchorId ? ` id="${anchorId}" style="scroll-margin-top:72px;"` : '';
@@ -1009,8 +1000,16 @@ function renderHelp() {
 
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
-      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">How To</div>
-      <div style="font-size:14px;color:#8E8E93;line-height:1.5;margin-bottom:10px;">Quick guide to using ${APP_NAME}</div>
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">Setup</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;margin-bottom:12px;">Guides and configuration for ${APP_NAME}</div>
+      <button onclick="scrollToSetupSettings()"
+        style="background:white;border:none;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;margin-bottom:10px;">
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:600;color:#000;">Settings</div>
+          <div style="font-size:12px;color:#8E8E93;">Sync, save to sheet, import/export</div>
+        </div>
+        <span style="color:#007AFF;font-size:18px;">›</span>
+      </button>
       <a href="#help-configuration"
          style="display:inline-block;font-size:14px;font-weight:600;color:#007AFF;text-decoration:none;">
         How to configure your setup ↓
@@ -1138,6 +1137,13 @@ function renderHelp() {
         </p>
       `)}
 
+      <div id="setup-settings" style="scroll-margin-top:72px;padding:16px 0 8px;margin-top:4px;">
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#000;margin-bottom:4px;">Settings</div>
+        <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Sync with Google Sheets, connect sheet saving, and import/export data.</div>
+      </div>
+
+      ${settingsPanelHtml()}
+
       ${sourceFeedbackCardHtml()}
     </div>
   `;
@@ -1149,7 +1155,6 @@ function renderActiveTab() {
   else if (state.tab === 'history') renderHistory();
   else if (state.tab === 'list') renderList();
   else if (state.tab === 'about') renderAbout();
-  else if (state.tab === 'settings') renderSettings();
   else if (state.tab === 'help') renderHelp();
 }
 
@@ -1233,9 +1238,13 @@ window.clearMapAreaFilter = function() {
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 window.switchTab = function(tab) {
+  if (tab === 'settings') {
+    scrollToSetupSettings();
+    return;
+  }
   state.tab = tab;
   state.results = null;
-  const pages = ['discover', 'map', 'history', 'list', 'about', 'settings', 'help'];
+  const pages = ['discover', 'map', 'history', 'list', 'about', 'help'];
   pages.forEach(p => {
     const pg = document.getElementById('page-' + p);
     if (pg) pg.style.display = tab === p ? '' : 'none';

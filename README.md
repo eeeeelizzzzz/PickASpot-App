@@ -27,8 +27,7 @@ I started the first version on [Replit](https://replit.com/) from my phone, in m
 | **History** | Log visits with food / vibe / service ratings and notes |
 | **List** | Browse, search, add, and manage restaurants |
 | **About** | Why Pick A Spot exists |
-| **Settings** | [Google Sheet sync](#how-sync-works), [save to sheet](#how-sync-works), import/export — see [Google Sheet setup](#google-sheet-setup) |
-| **How To** | In-app setup guide (or this README's [Getting started](#getting-started)) |
+| **Setup** | In-app guides, [Google Sheet sync](#how-sync-works), [save to sheet](#how-sync-works), import/export — see [Google Sheet setup](#google-sheet-setup) |
 
 ### Add to home screen
 
