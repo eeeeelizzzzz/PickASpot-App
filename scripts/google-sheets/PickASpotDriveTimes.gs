@@ -77,8 +77,8 @@ function setupConfigSheet() {
   SpreadsheetApp.getUi().alert(
     'Config sheet ready.\n\n' +
     '1. Edit Config!' + HOME_CELL + ' with your home address\n' +
-    '2. Copy Config!' + SECRET_CELL + ' into the app (Sheet write-back)\n' +
-    '3. Deploy → New deployment → Web app (see Pick A Spot → Show write-back setup)'
+    '2. Copy Config!' + SECRET_CELL + ' into Pick A Spot → Settings → Save to Google Sheet\n' +
+    '3. In Apps Script: Deploy → New deployment → Web app (see Pick A Spot → Show write-back setup)'
   );
 }
 
@@ -91,14 +91,17 @@ function getSecret_() {
 
 function showWriteBackSetup() {
   SpreadsheetApp.getUi().alert(
-    'Write changes from the Pick A Spot app back to this sheet:\n\n' +
+    'Save Pick A Spot changes back to this Google Sheet:\n\n' +
+    'In Google Sheets & Apps Script:\n' +
     '1. Run Pick A Spot → Set up Config sheet (creates secret in Config!' + SECRET_CELL + ')\n' +
-    '2. Deploy → New deployment → Type: Web app\n' +
+    '2. Extensions → Apps Script → Deploy → New deployment → Type: Web app\n' +
     '   Execute as: Me\n' +
     '   Who has access: Anyone\n' +
-    '3. Copy the Web app URL into the app under "Sheet write-back"\n' +
-    '4. Copy Config!' + SECRET_CELL + ' into the app as the write secret\n\n' +
-    'New restaurants and visit logs will save to the sheet automatically.'
+    '3. Copy the Apps Script Web app URL (not your sheet link)\n\n' +
+    'In Pick A Spot:\n' +
+    '4. Settings → Save to Google Sheet\n' +
+    '5. Paste the Web app URL and Config!' + SECRET_CELL + ' secret → Save Google Sheet connection\n\n' +
+    'New restaurants and visit logs will save to this sheet automatically.'
   );
 }
 

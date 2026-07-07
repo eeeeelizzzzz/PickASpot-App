@@ -33,7 +33,10 @@ const HOME_ADDRESS_KEY  = 'pick_a_spot_home_address';
 const GEO_CACHE_KEY     = 'pick_a_spot_geo_cache';
 const USE_API        = import.meta.env.VITE_USE_API === 'true';
 const API_BASE       = import.meta.env.VITE_API_BASE || '/api/restaurants';
-const GITHUB_REPO_URL = import.meta.env.VITE_GITHUB_REPO_URL || '';
+const GITHUB_REPO_URL = import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/eeeeelizzzzz/PickASpot-App';
+const AUTHOR_URL = 'https://eeeeelizzzzz.github.io/';
+const EATING_OKC_URL = 'https://eatingokc.com/';
+const GREG_HORTON_YOUTUBE_URL = 'https://www.youtube.com/watch?v=2fJRrb5pn9s';
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
@@ -819,7 +822,7 @@ function renderSettings() {
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
       <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">Settings</div>
-      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Google Sheet sync, write-back, and data import/export.</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Sync with Google Sheets, connect sheet saving, and import/export data.</div>
     </div>
 
     <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px;">
@@ -842,17 +845,17 @@ function renderSettings() {
       <div class="ios-card" style="padding:14px 16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:16px;">⬆️</span>
-          <div style="font-size:14px;font-weight:600;color:#000;">Sheet write-back</div>
+          <div style="font-size:14px;font-weight:600;color:#000;">Save to Google Sheet</div>
         </div>
         <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
-          Saves new restaurants and visit logs to your sheet. Deploy Apps Script as a Web app (How To), then paste URL and Config!B2 secret.
+          Push new restaurants and visit logs from Pick A Spot to your sheet. First deploy the spreadsheet's Apps Script as a Web app (How To), then paste that URL and <strong>Config!B2</strong> here.
         </div>
-        <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script web app URL…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
-        <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret (Config!B2)…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
+        <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script Web app URL (not your sheet link)…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
+        <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret from Config!B2…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
         <button onclick="saveSheetWriteBack()" style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
-          Save write-back settings
+          Save Google Sheet connection
         </button>
-        ${canSheetWrite() ? '<div style="font-size:11px;color:#34C759;margin-top:8px;">Write-back enabled</div>' : ''}
+        ${canSheetWrite() ? '<div style="font-size:11px;color:#34C759;margin-top:8px;">Connected — new visits and restaurants save to your sheet automatically</div>' : ''}
       </div>
 
       <div class="ios-card" style="padding:14px 16px;">
@@ -876,14 +879,94 @@ function renderSettings() {
       <button onclick="switchTab('help'); setTimeout(() => { const el = document.getElementById('help-configuration'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 50);"
         style="background:white;border:none;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;margin-top:4px;">
         <div style="text-align:left;">
-          <div style="font-size:15px;font-weight:600;color:#000;">Setup guide</div>
-          <div style="font-size:12px;color:#8E8E93;">Apps Script &amp; sheet configuration</div>
+          <div style="font-size:15px;font-weight:600;color:#000;">How to configure your setup</div>
+          <div style="font-size:12px;color:#8E8E93;">Google Sheet sync &amp; save settings</div>
         </div>
         <span style="color:#007AFF;font-size:18px;">›</span>
       </button>
     </div>
 
     <div style="padding-bottom:32px;"></div>
+  `;
+}
+
+function sourceFeedbackCardHtml() {
+  return `
+      <div class="ios-card" style="padding:16px;text-align:center;">
+        <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:6px;">Source &amp; feedback</div>
+        <div style="font-size:14px;color:#8E8E93;margin-bottom:12px;line-height:1.5;">
+          ${APP_NAME} is open source.${GITHUB_REPO_URL ? ' Report issues or view the code on GitHub.' : ''}
+        </div>
+        ${GITHUB_REPO_URL ? `<a href="${escHtml(GITHUB_REPO_URL)}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-block;background:#007AFF;color:white;text-decoration:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;">
+          View on GitHub
+        </a>` : ''}
+      </div>`;
+}
+
+// ─── Render: About Tab ────────────────────────────────────────────────────────
+
+function renderAbout() {
+  const el = document.getElementById('page-about');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div style="padding:20px 20px 12px;">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">About</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Why ${APP_NAME} exists</div>
+    </div>
+
+    <div style="padding:0 20px 32px;">
+      <div class="ios-card" style="padding:18px 16px;margin-bottom:12px;">
+        <p style="margin:0 0 14px;font-size:15px;color:#3C3C43;line-height:1.6;">
+          Hi, I'm <a href="${escHtml(AUTHOR_URL)}" target="_blank" rel="noopener noreferrer" style="color:#007AFF;font-weight:600;text-decoration:none;">Elizabeth Smith</a>.
+          I built ${APP_NAME} as a little side project.
+        </p>
+        <p style="margin:0 0 10px;font-size:15px;color:#3C3C43;line-height:1.6;">
+          My partner and I have the same conversation over and over:
+        </p>
+        <div style="margin:0 0 14px;padding:12px 14px;background:#F2F2F7;border-radius:12px;font-size:14px;color:#636366;line-height:1.55;font-style:italic;">
+          "Let's go out for dinner."<br>
+          "Okay, where?"<br>
+          "What are you in the mood for?"<br>
+          "I don't know. Do you want something in particular?"<br>
+          "Not really…"
+        </div>
+        <p style="margin:0 0 14px;font-size:15px;color:#3C3C43;line-height:1.6;">
+          It gets frustrating! At the same time, we love trying new and different foods. We live in the OKC metro,
+          which has a surprisingly strong food scene. There are lots of places we want to try — but remembering them
+          when hunger strikes is hard. I built this tool to make picking easier and, hopefully, to cut down on the
+          "what do you want?" / "I don't know" loop.
+        </p>
+        <p style="margin:0 0 14px;font-size:15px;color:#3C3C43;line-height:1.6;">
+          I follow local food writer Greg Horton —
+          <a href="${escHtml(GREG_HORTON_YOUTUBE_URL)}" target="_blank" rel="noopener noreferrer" style="color:#007AFF;text-decoration:none;">hear from him here</a> —
+          who runs <a href="${escHtml(EATING_OKC_URL)}" target="_blank" rel="noopener noreferrer" style="color:#007AFF;font-weight:600;text-decoration:none;">Eating OKC</a>.
+          Many restaurants on my list come from his writing. You'll notice his recommendations as their own tag:
+          <span class="badge-tag" style="background:#E8F4FD;color:#007AFF;margin-left:2px;">eatingOKC</span>
+        </p>
+        <p style="margin:0 0 14px;font-size:15px;color:#3C3C43;line-height:1.6;">
+          I started the first version on <a href="https://replit.com/" target="_blank" rel="noopener noreferrer" style="color:#007AFF;text-decoration:none;">Replit</a> —
+          literally from my phone, by the pool — and kept expanding from there. Later I used
+          <a href="https://cursor.com/" target="_blank" rel="noopener noreferrer" style="color:#007AFF;text-decoration:none;">Cursor</a>
+          to help flesh out more of the details: sheet sync, the map, save-to-sheet, and the rest of what you see now.
+        </p>
+        <p style="margin:0;font-size:15px;color:#3C3C43;line-height:1.6;">
+          I'm not sure how often I'll update this, but I'm looking forward to putting it to use. Maybe it can be useful for you too.
+        </p>
+      </div>
+
+      <button onclick="switchTab('help'); setTimeout(() => { const el = document.getElementById('help-configuration'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 50);"
+        style="background:white;border:none;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;margin-bottom:12px;">
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:600;color:#000;">How to configure your setup</div>
+          <div style="font-size:12px;color:#8E8E93;">Google Sheet sync &amp; save settings</div>
+        </div>
+        <span style="color:#007AFF;font-size:18px;">›</span>
+      </button>
+
+      ${sourceFeedbackCardHtml()}
+    </div>
   `;
 }
 
@@ -902,7 +985,7 @@ function helpConfigHeader() {
   return `
     <div id="help-configuration" style="scroll-margin-top:72px;padding:16px 0 8px;margin-top:4px;">
       <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#000;margin-bottom:4px;">Configuration</div>
-      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Set up your Google Sheet, Apps Script, sync, and optional write-back.</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Google Sheets &amp; Apps Script setup, then connect Pick A Spot.</div>
     </div>`;
 }
 
@@ -916,7 +999,7 @@ function renderHelp() {
       <div style="font-size:14px;color:#8E8E93;line-height:1.5;margin-bottom:10px;">Quick guide to using ${APP_NAME}</div>
       <a href="#help-configuration"
          style="display:inline-block;font-size:14px;font-weight:600;color:#007AFF;text-decoration:none;">
-        Configure Google Sheet setup ↓
+        How to configure your setup ↓
       </a>
     </div>
 
@@ -930,14 +1013,14 @@ function renderHelp() {
       `)}
 
       ${helpSection('Record a visit', `
-        <p style="margin:0 0 10px;">Log visits in the app — no sheet edit needed. With write-back enabled, visits sync to your sheet (<strong>lastVisited</strong>, ratings, <strong>notes</strong>).</p>
+        <p style="margin:0 0 10px;">Log visits in Pick A Spot — no Google Sheet edit needed. If <strong>Save to Google Sheet</strong> is connected in Settings, visits update your sheet (<strong>lastVisited</strong>, ratings, <strong>notes</strong>).</p>
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;"><strong>Full visit log:</strong> History tab → <strong>+ Log Visit</strong> → enter ratings, notes, and date → <strong>Save Visit</strong>.</li>
           <li style="margin-bottom:8px;"><strong>Quick mark:</strong> On Discover results, tap <strong>Mark Visited</strong> on a pick.</li>
           <li><strong>Edit later:</strong> List or History → tap a restaurant to view or update details.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Visit data syncs to the sheet when write-back is enabled. Otherwise use Export JSON/CSV to move between devices.
+          Without a Google Sheet connection, visit data stays in Pick A Spot — use Export JSON/CSV to move between devices.
         </p>
       `)}
 
@@ -949,7 +1032,7 @@ function renderHelp() {
           <li>Tap <strong>Add Restaurant</strong> to save.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          With write-back enabled, new spots also save to your sheet. Otherwise export CSV and paste into the sheet.
+          With <strong>Save to Google Sheet</strong> connected, new spots also save to your sheet. Otherwise export CSV and paste into Google Sheets.
         </p>
       `)}
 
@@ -967,28 +1050,40 @@ function renderHelp() {
 
       ${helpConfigHeader()}
 
-      ${helpSection('Sync from your Google Sheet', `
+      ${helpSection('Pull sheet data into Pick A Spot', `
+        <p style="margin:0 0 10px;">Use <strong>Sync Now</strong> to read your Google Sheet into Pick A Spot. This does <strong>not</strong> send anything back to the sheet.</p>
+        <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#000;">In Google Sheets</p>
+        <ol style="margin:0 0 14px;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>Pick A Spot → Update all drive times</strong> (see README).</li>
+          <li style="margin-bottom:8px;">Share as <strong>Anyone with the link → Viewer</strong>. If sync fails with HTTP 400, copy the <strong>Restaurants</strong> tab URL, or use <strong>File → Share → Publish to web</strong> (CSV link).</li>
+        </ol>
+        <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#000;">In Pick A Spot</p>
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>Pick A Spot → Update all drive times</strong> in the sheet (see README).</li>
-          <li style="margin-bottom:8px;">Share your sheet as <strong>Anyone with the link → Viewer</strong>. If sync fails with HTTP 400, open the <strong>Restaurants</strong> tab and copy that URL, or use <strong>File → Share → Publish to web</strong> (CSV link).</li>
-          <li style="margin-bottom:8px;">Go to <strong>Settings</strong>, paste the sheet link, and tap <strong>Save Link</strong>.</li>
-          <li>Tap <strong>Sync Now</strong> on Discover or Settings whenever you want to pull in sheet edits.</li>
+          <li style="margin-bottom:8px;"><strong>Settings</strong> → <strong>Sync from Google Sheet</strong> → paste your sheet link → <strong>Save Link</strong>.</li>
+          <li>Tap <strong>Sync Now</strong> on Discover or Settings after you edit the sheet or update drive times.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Sheet changes are <strong>not</strong> automatic — sync after editing the sheet or updating drive times.
-          ${sheetSaved ? `Last synced: ${lastSheetSync()}.` : 'No sheet link saved yet — set one up in Settings.'}
+          Sheet → Pick A Spot is manual — tap Sync Now when you want fresh data.
+          ${sheetSaved ? `Last synced: ${lastSheetSync()}.` : 'No sheet link saved yet — set one in Settings.'}
         </p>
       `)}
 
-      ${helpSection('Write to your Google Sheet', `
-        <p style="margin:0 0 10px;">New restaurants and visit updates can save back to the sheet automatically.</p>
+      ${helpSection('Save Pick A Spot changes to Google Sheets', `
+        <p style="margin:0 0 10px;">New restaurants and visit logs can save to your Google Sheet automatically — no Sync Now. You set this up in two places: your spreadsheet's Apps Script, then Pick A Spot Settings.</p>
+        <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#000;">In Google Sheets &amp; Apps Script</p>
+        <ol style="margin:0 0 14px;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Spreadsheet menu: <strong>Pick A Spot → Set up Config sheet</strong> (creates the write secret in <strong>Config!B2</strong>).</li>
+          <li style="margin-bottom:8px;">Open <strong>Extensions → Apps Script</strong>. Choose <strong>Deploy → New deployment → Web app</strong>.</li>
+          <li style="margin-bottom:8px;">Set <strong>Execute as: Me</strong> and <strong>Who has access: Anyone</strong>. Deploy and copy the <strong>Web app URL</strong> (from Apps Script — not your Pick A Spot or sheet link).</li>
+        </ol>
+        <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#000;">In Pick A Spot</p>
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">In Google Sheets: <strong>Pick A Spot → Set up Config sheet</strong> (creates secret in <strong>Config!B2</strong>).</li>
-          <li style="margin-bottom:8px;"><strong>Deploy → New deployment → Web app</strong> — Execute as: Me, Who has access: Anyone.</li>
-          <li style="margin-bottom:8px;">In the app <strong>Settings</strong> tab, paste the Web app URL and secret under <strong>Sheet write-back</strong>.</li>
+          <li style="margin-bottom:8px;"><strong>Settings</strong> → <strong>Save to Google Sheet</strong>.</li>
+          <li style="margin-bottom:8px;">Paste the Apps Script Web app URL and the <strong>Config!B2</strong> secret.</li>
+          <li>Tap <strong>Save Google Sheet connection</strong>.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          ${canSheetWrite() ? 'Write-back is enabled on this device.' : 'Write-back is not configured yet.'}
+          ${canSheetWrite() ? 'Connected on this device — adds and visits save to your sheet automatically.' : 'Not connected yet — complete both sections above.'}
         </p>
       `)}
 
@@ -1010,23 +1105,14 @@ function renderHelp() {
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">Import <strong>example-restaurants.csv</strong> from the repo into a new Google Sheet (see README → Sheet setup).</li>
           <li style="margin-bottom:8px;">Paste <strong>PickASpotDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
-          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>Settings</strong> on any Pick A Spot deployment.</li>
+          <li style="margin-bottom:8px;">In Pick A Spot <strong>Settings</strong>: connect your sheet link for Sync Now, and optionally <strong>Save to Google Sheet</strong> for visit logs.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
           Full steps: <strong>scripts/google-sheets/SETUP.md</strong> in the GitHub repo.
         </p>
       `)}
 
-      <div class="ios-card" style="padding:16px;text-align:center;">
-        <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:6px;">Source &amp; feedback</div>
-        <div style="font-size:14px;color:#8E8E93;margin-bottom:12px;line-height:1.5;">
-          ${APP_NAME} is open source.${GITHUB_REPO_URL ? ' Report issues or view the code on GitHub.' : ''}
-        </div>
-        ${GITHUB_REPO_URL ? `<a href="${escHtml(GITHUB_REPO_URL)}" target="_blank" rel="noopener noreferrer"
-           style="display:inline-block;background:#007AFF;color:white;text-decoration:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;">
-          View on GitHub
-        </a>` : ''}
-      </div>
+      ${sourceFeedbackCardHtml()}
     </div>
   `;
 }
@@ -1036,6 +1122,7 @@ function renderActiveTab() {
   else if (state.tab === 'map') renderMap();
   else if (state.tab === 'history') renderHistory();
   else if (state.tab === 'list') renderList();
+  else if (state.tab === 'about') renderAbout();
   else if (state.tab === 'settings') renderSettings();
   else if (state.tab === 'help') renderHelp();
 }
@@ -1122,7 +1209,7 @@ window.clearMapAreaFilter = function() {
 window.switchTab = function(tab) {
   state.tab = tab;
   state.results = null;
-  const pages = ['discover', 'map', 'history', 'list', 'settings', 'help'];
+  const pages = ['discover', 'map', 'history', 'list', 'about', 'settings', 'help'];
   pages.forEach(p => {
     const pg = document.getElementById('page-' + p);
     if (pg) pg.style.display = tab === p ? '' : 'none';
@@ -1835,7 +1922,7 @@ window.saveSheetWriteBack = function() {
   const url = (document.getElementById('sheet-write-url-input')?.value || '').trim();
   const secret = (document.getElementById('sheet-write-secret-input')?.value || '').trim();
   saveSheetWriteConfig(url, secret);
-  showToast(url && secret ? 'Write-back settings saved' : 'Write-back cleared');
+  showToast(url && secret ? 'Google Sheet connection saved' : 'Google Sheet connection cleared');
   renderActiveTab();
 };
 

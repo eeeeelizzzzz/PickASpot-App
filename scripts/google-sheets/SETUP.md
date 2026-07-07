@@ -50,7 +50,7 @@ To publish your own template for others (maintainers):
 | Cell | Purpose |
 |------|---------|
 | **Config!B1** | Your home address (for drive times) |
-| **Config!B2** | Write secret (for app → sheet saves). Copy into the app under **Sheet write-back**. |
+| **Config!B2** | Write secret (for Pick A Spot → sheet saves). Copy into Pick A Spot **Settings → Save to Google Sheet**. |
 
 ### Typical workflow in the sheet
 
@@ -59,16 +59,16 @@ To publish your own template for others (maintainers):
 3. Add restaurants (or keep example rows while testing)
 4. **Pick A Spot → Look up missing addresses**
 5. **Pick A Spot → Update all drive times**
-6. Optional: enable **write-back** so the app can save new restaurants and visits — see [Deploy write-back Web app](#deploy-write-back-web-app) below.
+6. Optional: connect **Save to Google Sheet** in Pick A Spot so new restaurants and visits save here — see [Deploy Apps Script Web app](#deploy-write-back-web-app) below.
 
-## Deploy write-back Web app
+## Deploy Apps Script Web app
 
-Write-back lets the Pick A Spot app push changes **to** your sheet (new restaurants, visit dates, ratings, notes). Sync only pulls **from** the sheet; write-back requires a separate Apps Script deployment.
+Pick A Spot can push changes **to** your sheet (new restaurants, visit dates, ratings, notes). **Sync Now** only pulls **from** the sheet; saving back requires a separate Apps Script Web app deployment.
 
 ### Prerequisites
 
 1. **Pick A Spot → Set up Config sheet** (creates the `Config` tab if needed).
-2. Note the value in **Config!B2** — this is your write secret. The app sends it with every save request.
+2. Note the value in **Config!B2** — this is your write secret. Pick A Spot sends it with every save request.
 3. You can also open **Pick A Spot → Show write-back setup** in the spreadsheet for a short in-sheet reminder.
 
 ### Deploy from Apps Script
@@ -82,18 +82,18 @@ Write-back lets the Pick A Spot app push changes **to** your sheet (new restaura
    - **Who has access** — **Anyone**
 5. Click **Deploy**.
 6. On first deploy, Google may ask you to **Authorize access** — review permissions and allow.
-7. Copy the **Web app URL** (looks like `https://script.google.com/macros/s/.../exec`). Keep this tab open until you paste it into the app.
+7. Copy the **Web app URL** from Apps Script (looks like `https://script.google.com/macros/s/.../exec`). This is not your sheet link or Pick A Spot URL.
 
-> **Who has access: Anyone** is required so the browser-based Pick A Spot app can call the endpoint. The write secret in **Config!B2** prevents unauthorized edits.
+> **Who has access: Anyone** is required so Pick A Spot in the browser can call the endpoint. The write secret in **Config!B2** prevents unauthorized edits.
 
-### Connect write-back in the app
+### Connect in Pick A Spot
 
-1. Open Pick A Spot → **Settings** → **Sheet write-back**.
-2. Paste the **Web app URL** from the deployment.
+1. Open Pick A Spot → **Settings** → **Save to Google Sheet**.
+2. Paste the **Apps Script Web app URL** from the deployment.
 3. Paste **Config!B2** as the write secret.
-4. Tap **Save write-back settings**.
+4. Tap **Save Google Sheet connection**.
 
-After that, adding a restaurant or logging a visit in the app updates the matching row in the sheet (matched by `id`, or by `name` if no `id`).
+After that, adding a restaurant or logging a visit in Pick A Spot updates the matching row in the sheet (matched by `id`, or by `name` if no `id`).
 
 ### Updating the script later
 
