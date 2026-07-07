@@ -167,7 +167,9 @@ function loadRestaurantsLocal() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(({ bestSeasons: _s, ...r }) => r);
+      }
     }
   } catch {}
   return JSON.parse(JSON.stringify(SEED_RESTAURANTS));
@@ -217,7 +219,7 @@ function formatDistanceLabel(r) {
 async function recalculateDistances() {
   const home = getHomeAddress();
   if (!home) {
-    showToast('Set your home address in My List first');
+    showToast('Set your home address in Settings first');
     return { error: 'no_home' };
   }
   if (state.restaurants.length === 0) return { updated: 0 };
@@ -645,18 +647,71 @@ function renderHistory() {
     </div>`;
 }
 
-// ─── Render: My List Tab ──────────────────────────────────────────────────────
+// ─── Render: List Tab ─────────────────────────────────────────────────────────
+
+function restaurantActionsHtml() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="openAddRestaurant()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+        <span style="width:28px;height:28px;background:#007AFF;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px;color:white;flex-shrink:0;">+</span>
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:600;color:#000;">Add Restaurant</div>
+          <div style="font-size:12px;color:#8E8E93;">Add a new spot to your list</div>
+        </div>
+      </button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="exportData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬆️</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Export</div>
+            <div style="font-size:11px;color:#8E8E93;">Download JSON</div>
+          </div>
+        </button>
+        <button onclick="importData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬇️</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Import</div>
+            <div style="font-size:11px;color:#8E8E93;">Load JSON</div>
+          </div>
+        </button>
+        <button onclick="exportCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📊</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Export CSV</div>
+            <div style="font-size:11px;color:#8E8E93;">Edit in Sheets</div>
+          </div>
+        </button>
+        <button onclick="importCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📥</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:600;color:#000;">Import CSV</div>
+            <div style="font-size:11px;color:#8E8E93;">Load edited sheet</div>
+          </div>
+        </button>
+      </div>
+    </div>`;
+}
+
+function restaurantMatchesSearch(r, search) {
+  if (!search) return true;
+  const hay = [
+    r.name,
+    r.location,
+    r.tier,
+    r.address,
+    r.distance,
+    r.notes,
+    ...(r.tags || []),
+    ...(r.reasons || []),
+  ].join(' ').toLowerCase();
+  return hay.includes(search);
+}
 
 function renderList() {
   const el = document.getElementById('page-list');
-  const search = state.listSearch.toLowerCase();
+  const search = state.listSearch.trim().toLowerCase();
 
-  let filtered = state.restaurants.filter(r =>
-    !search ||
-    r.name.toLowerCase().includes(search) ||
-    r.location.toLowerCase().includes(search) ||
-    r.tags.some(t => t.toLowerCase().includes(search))
-  );
+  let filtered = state.restaurants.filter(r => restaurantMatchesSearch(r, search));
 
   // Group by tier
   const groups = {};
@@ -695,74 +750,112 @@ function renderList() {
   });
 
   if (!groupsHtml) {
-    groupsHtml = `
-      <div class="ios-card" style="margin:0 20px;padding:32px 20px;text-align:center;">
-        <div style="font-size:40px;margin-bottom:10px;">🔍</div>
-        <div style="font-size:16px;font-weight:600;color:#000;margin-bottom:4px;">No results</div>
-        <div style="font-size:13px;color:#8E8E93;">Try a different search term.</div>
-      </div>`;
+    const total = state.restaurants.length;
+    if (total === 0) {
+      groupsHtml = `
+        <div class="ios-card" style="padding:32px 20px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:10px;">🍽️</div>
+          <div style="font-size:16px;font-weight:600;color:#000;margin-bottom:4px;">No restaurants yet</div>
+          <div style="font-size:13px;color:#8E8E93;">Add one above, sync from Settings, or import a file.</div>
+        </div>`;
+    } else if (search) {
+      groupsHtml = `
+        <div class="ios-card" style="padding:32px 20px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:10px;">🔍</div>
+          <div style="font-size:16px;font-weight:600;color:#000;margin-bottom:4px;">No matches</div>
+          <div style="font-size:13px;color:#8E8E93;">Nothing matched "${escHtml(state.listSearch.trim())}". Try name, location, tags, or tier.</div>
+        </div>`;
+    } else {
+      groupsHtml = `
+        <div class="ios-card" style="padding:32px 20px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:10px;">🔍</div>
+          <div style="font-size:16px;font-weight:600;color:#000;margin-bottom:4px;">No results</div>
+          <div style="font-size:13px;color:#8E8E93;">Try a different search term.</div>
+        </div>`;
+    }
   }
+
+  const searchMeta = search
+    ? `<div style="font-size:12px;color:#8E8E93;margin-bottom:8px;">${filtered.length} of ${state.restaurants.length} shown</div>`
+    : state.restaurants.length
+      ? `<div style="font-size:12px;color:#8E8E93;margin-bottom:8px;">${state.restaurants.length} restaurant${state.restaurants.length === 1 ? '' : 's'}</div>`
+      : '';
 
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
-      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:12px;">My List</div>
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:12px;">List</div>
+    </div>
+
+    <div style="padding:0 20px 12px;">
+      ${restaurantActionsHtml()}
+    </div>
+
+    <div style="padding:0 20px 8px;">
       <div class="search-wrap">
         <span style="color:#8E8E93;font-size:15px;">🔍</span>
         <input
           id="list-search"
           type="search"
-          placeholder="Search restaurants…"
+          placeholder="Search name, location, tags, tier…"
           value="${escHtml(state.listSearch)}"
           oninput="handleListSearch(this.value)"
         />
         ${state.listSearch ? `<button onclick="handleListSearch('')" style="background:rgba(118,118,128,0.24);border:none;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font-size:10px;color:#8E8E93;flex-shrink:0;">✕</button>` : ''}
       </div>
+      ${searchMeta}
     </div>
 
-    <div style="padding:0 20px 12px;display:flex;flex-direction:column;gap:8px;">
-      <button onclick="openAddRestaurant()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
-        <span style="width:28px;height:28px;background:#007AFF;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px;color:white;flex-shrink:0;">+</span>
-        <div style="text-align:left;">
-          <div style="font-size:15px;font-weight:600;color:#000;">Add Restaurant</div>
-          <div style="font-size:12px;color:#8E8E93;">Add a new spot to your list</div>
+    <div style="padding:0 20px 32px;">
+      ${groupsHtml}
+    </div>
+  `;
+}
+
+// ─── Render: Settings Tab ───────────────────────────────────────────────────
+
+function renderSettings() {
+  const el = document.getElementById('page-settings');
+
+  el.innerHTML = `
+    <div style="padding:20px 20px 12px;">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">Settings</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Google Sheet sync, write-back, and data import/export.</div>
+    </div>
+
+    <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px;">
+      <div class="ios-card" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">🔗</span>
+          <div style="font-size:14px;font-weight:600;color:#000;">Sync from Google Sheet</div>
         </div>
-      </button>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button onclick="exportData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
-          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬆️</span>
-          <div style="text-align:left;">
-            <div style="font-size:14px;font-weight:600;color:#000;">Export</div>
-            <div style="font-size:11px;color:#8E8E93;">Download JSON</div>
-          </div>
-        </button>
-        <button onclick="importData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
-          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬇️</span>
-          <div style="text-align:left;">
-            <div style="font-size:14px;font-weight:600;color:#000;">Import</div>
-            <div style="font-size:11px;color:#8E8E93;">Load JSON</div>
-          </div>
-        </button>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
+          Share a Sheet ("Anyone with the link can view"), paste its link below, and sync anytime to pull in edits.
+        </div>
+        <input id="sheet-url-input" class="ios-input" type="text" placeholder="Paste Google Sheet link…" value="${escHtml(getSheetUrl())}" style="margin-bottom:8px;" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveSheetUrl()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Save Link</button>
+          <button onclick="syncFromSheet()" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Sync Now</button>
+        </div>
+        ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:8px;">Last synced: ${lastSheetSync()}</div>` : ''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button onclick="exportCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
-          <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📊</span>
-          <div style="text-align:left;">
-            <div style="font-size:14px;font-weight:600;color:#000;">Export CSV</div>
-            <div style="font-size:11px;color:#8E8E93;">Edit in Sheets/Excel</div>
-          </div>
-        </button>
-        <button onclick="importCSV()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
-          <span style="width:26px;height:26px;background:#FF950020;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📥</span>
-          <div style="text-align:left;">
-            <div style="font-size:14px;font-weight:600;color:#000;">Import CSV</div>
-            <div style="font-size:11px;color:#8E8E93;">Load edited sheet</div>
-          </div>
-        </button>
-      </div>
-    </div>
 
-    <div style="padding:0 20px 16px;">
-      <div class="ios-card" style="padding:14px 16px;margin-bottom:12px;">
+      <div class="ios-card" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">⬆️</span>
+          <div style="font-size:14px;font-weight:600;color:#000;">Sheet write-back</div>
+        </div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
+          Saves new restaurants and visit logs to your sheet. Deploy Apps Script as a Web app (How To), then paste URL and Config!B2 secret.
+        </div>
+        <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script web app URL…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
+        <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret (Config!B2)…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
+        <button onclick="saveSheetWriteBack()" style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
+          Save write-back settings
+        </button>
+        ${canSheetWrite() ? '<div style="font-size:11px;color:#34C759;margin-top:8px;">Write-back enabled</div>' : ''}
+      </div>
+
+      <div class="ios-card" style="padding:14px 16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:16px;">🏠</span>
           <div style="font-size:14px;font-weight:600;color:#000;">Home address</div>
@@ -778,52 +871,38 @@ function renderList() {
         </div>
       </div>
 
-      <div class="ios-card" style="padding:14px 16px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:16px;">🔗</span>
-          <div style="font-size:14px;font-weight:600;color:#000;">Sync from Google Sheet</div>
-        </div>
-        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
-          Share a Sheet ("Anyone with the link can view"), paste its link below, and sync anytime to pull in edits — no export/import needed.
-        </div>
-        <input id="sheet-url-input" class="ios-input" type="text" placeholder="Paste Google Sheet link…" value="${escHtml(getSheetUrl())}" style="margin-bottom:8px;" />
-        <div style="display:flex;gap:8px;">
-          <button onclick="saveSheetUrl()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Save Link</button>
-          <button onclick="syncFromSheet()" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Sync Now</button>
-        </div>
-        ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:8px;">Last synced: ${lastSheetSync()}</div>` : ''}
-      </div>
+      ${restaurantActionsHtml()}
 
-      <div class="ios-card" style="padding:14px 16px;margin-top:12px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:16px;">⬆️</span>
-          <div style="font-size:14px;font-weight:600;color:#000;">Sheet write-back</div>
+      <button onclick="switchTab('help'); setTimeout(() => { const el = document.getElementById('help-configuration'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 50);"
+        style="background:white;border:none;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;margin-top:4px;">
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:600;color:#000;">Setup guide</div>
+          <div style="font-size:12px;color:#8E8E93;">Apps Script &amp; sheet configuration</div>
         </div>
-        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
-          Saves new restaurants and visit logs to your sheet. Deploy Apps Script as a Web app (How To), then paste URL and Config!B2 secret.
-        </div>
-        <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script web app URL…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
-        <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret (Config!B2)…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
-        <button onclick="saveSheetWriteBack()" style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
-          Save write-back settings
-        </button>
-        ${canSheetWrite() ? '<div style="font-size:11px;color:#34C759;margin-top:8px;">Write-back enabled</div>' : ''}
-      </div>
+        <span style="color:#007AFF;font-size:18px;">›</span>
+      </button>
     </div>
 
-    <div style="padding:0 20px 32px;">
-      ${groupsHtml}
-    </div>
+    <div style="padding-bottom:32px;"></div>
   `;
 }
 
 // ─── Render: Help Tab ─────────────────────────────────────────────────────────
 
-function helpSection(title, bodyHtml) {
+function helpSection(title, bodyHtml, anchorId) {
+  const idAttr = anchorId ? ` id="${anchorId}" style="scroll-margin-top:72px;"` : '';
   return `
-    <div class="ios-card" style="padding:16px;margin-bottom:12px;">
+    <div class="ios-card" style="padding:16px;margin-bottom:12px;"${idAttr}>
       <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:8px;">${title}</div>
       <div style="font-size:14px;color:#3C3C43;line-height:1.55;">${bodyHtml}</div>
+    </div>`;
+}
+
+function helpConfigHeader() {
+  return `
+    <div id="help-configuration" style="scroll-margin-top:72px;padding:16px 0 8px;margin-top:4px;">
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#000;margin-bottom:4px;">Configuration</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;">Set up your Google Sheet, Apps Script, sync, and optional write-back.</div>
     </div>`;
 }
 
@@ -834,19 +913,70 @@ function renderHelp() {
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
       <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">How To</div>
-      <div style="font-size:14px;color:#8E8E93;">Quick guide to using ${APP_NAME}</div>
+      <div style="font-size:14px;color:#8E8E93;line-height:1.5;margin-bottom:10px;">Quick guide to using ${APP_NAME}</div>
+      <a href="#help-configuration"
+         style="display:inline-block;font-size:14px;font-weight:600;color:#007AFF;text-decoration:none;">
+        Configure Google Sheet setup ↓
+      </a>
     </div>
 
     <div style="padding:0 20px 32px;">
-      ${helpSection('Run your own Pick A Spot', `
-        <p style="margin:0 0 10px;">Use this app with <strong>your own</strong> Google Sheet — no fork required. Or fork the repo and deploy your own copy on GitHub Pages.</p>
+      ${helpSection('Pick a restaurant', `
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Import <strong>example-restaurants.csv</strong> from the repo into a new Google Sheet (see README → Sheet setup).</li>
-          <li style="margin-bottom:8px;">Paste <strong>PickASpotDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
-          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>My List</strong> on any Pick A Spot deployment.</li>
+          <li style="margin-bottom:8px;">On <strong>Discover</strong>, set filters (location, distance, tags, reasons).</li>
+          <li style="margin-bottom:8px;">Tap <strong>Find Food</strong> for three scored picks.</li>
+          <li>Tap <strong>Spin Again</strong> to reshuffle from the same pool.</li>
+        </ol>
+      `)}
+
+      ${helpSection('Record a visit', `
+        <p style="margin:0 0 10px;">Log visits in the app — no sheet edit needed. With write-back enabled, visits sync to your sheet (<strong>lastVisited</strong>, ratings, <strong>notes</strong>).</p>
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;"><strong>Full visit log:</strong> History tab → <strong>+ Log Visit</strong> → enter ratings, notes, and date → <strong>Save Visit</strong>.</li>
+          <li style="margin-bottom:8px;"><strong>Quick mark:</strong> On Discover results, tap <strong>Mark Visited</strong> on a pick.</li>
+          <li><strong>Edit later:</strong> List or History → tap a restaurant to view or update details.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Full steps: <strong>scripts/google-sheets/SETUP.md</strong> in the GitHub repo.
+          Visit data syncs to the sheet when write-back is enabled. Otherwise use Export JSON/CSV to move between devices.
+        </p>
+      `)}
+
+      ${helpSection('Add a new restaurant', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Open the <strong>List</strong> tab.</li>
+          <li style="margin-bottom:8px;">Tap <strong>Add Restaurant</strong>.</li>
+          <li style="margin-bottom:8px;">Fill in name, location, tier, tags, and optional last-visited date.</li>
+          <li>Tap <strong>Add Restaurant</strong> to save.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          With write-back enabled, new spots also save to your sheet. Otherwise export CSV and paste into the sheet.
+        </p>
+      `)}
+
+      ${helpSection('Map &amp; area filter', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Open the <strong>Map</strong> tab — pins appear for restaurants with addresses.</li>
+          <li style="margin-bottom:8px;">Tap the <strong>rectangle</strong> tool (top-right), then drag a box on the map.</li>
+          <li style="margin-bottom:8px;">Only restaurants inside the box are used on <strong>Discover</strong> when you tap Find Food.</li>
+          <li>Tap <strong>Clear area</strong> on the map or Discover to remove the filter.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Addresses from your sheet are geocoded the first time you open the map. Run <strong>Look up missing addresses</strong> in Google Sheets for best results.
+        </p>
+      `)}
+
+      ${helpConfigHeader()}
+
+      ${helpSection('Sync from your Google Sheet', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>Pick A Spot → Update all drive times</strong> in the sheet (see README).</li>
+          <li style="margin-bottom:8px;">Share your sheet as <strong>Anyone with the link → Viewer</strong>. If sync fails with HTTP 400, open the <strong>Restaurants</strong> tab and copy that URL, or use <strong>File → Share → Publish to web</strong> (CSV link).</li>
+          <li style="margin-bottom:8px;">Go to <strong>Settings</strong>, paste the sheet link, and tap <strong>Save Link</strong>.</li>
+          <li>Tap <strong>Sync Now</strong> on Discover or Settings whenever you want to pull in sheet edits.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Sheet changes are <strong>not</strong> automatic — sync after editing the sheet or updating drive times.
+          ${sheetSaved ? `Last synced: ${lastSheetSync()}.` : 'No sheet link saved yet — set one up in Settings.'}
         </p>
       `)}
 
@@ -855,23 +985,10 @@ function renderHelp() {
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">In Google Sheets: <strong>Pick A Spot → Set up Config sheet</strong> (creates secret in <strong>Config!B2</strong>).</li>
           <li style="margin-bottom:8px;"><strong>Deploy → New deployment → Web app</strong> — Execute as: Me, Who has access: Anyone.</li>
-          <li style="margin-bottom:8px;">In the app <strong>My List</strong>, paste the Web app URL and secret under <strong>Sheet write-back</strong>.</li>
+          <li style="margin-bottom:8px;">In the app <strong>Settings</strong> tab, paste the Web app URL and secret under <strong>Sheet write-back</strong>.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
           ${canSheetWrite() ? 'Write-back is enabled on this device.' : 'Write-back is not configured yet.'}
-        </p>
-      `)}
-
-      ${helpSection('Sync from your Google Sheet', `
-        <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>Pick A Spot → Update all drive times</strong> in the sheet (see README).</li>
-          <li style="margin-bottom:8px;">Share your sheet as <strong>Anyone with the link can view</strong>.</li>
-          <li style="margin-bottom:8px;">Go to <strong>My List</strong>, paste the sheet link, and tap <strong>Save Link</strong>.</li>
-          <li>Tap <strong>Sync Now</strong> on Discover or My List whenever you want to pull in sheet edits.</li>
-        </ol>
-        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Sheet changes are <strong>not</strong> automatic — sync after editing the sheet or updating drive times.
-          ${sheetSaved ? `Last synced: ${lastSheetSync()}.` : 'No sheet link saved yet — set one up in My List.'}
         </p>
       `)}
 
@@ -888,48 +1005,16 @@ function renderHelp() {
         </p>
       `)}
 
-      ${helpSection('Add a new restaurant', `
+      ${helpSection('Run your own Pick A Spot', `
+        <p style="margin:0 0 10px;">Use this app with <strong>your own</strong> Google Sheet — no fork required. Or fork the repo and deploy your own copy on GitHub Pages.</p>
         <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Open the <strong>My List</strong> tab.</li>
-          <li style="margin-bottom:8px;">Tap <strong>Add Restaurant</strong>.</li>
-          <li style="margin-bottom:8px;">Fill in name, location, tier, tags, and optional last-visited date.</li>
-          <li>Tap <strong>Add Restaurant</strong> to save.</li>
+          <li style="margin-bottom:8px;">Import <strong>example-restaurants.csv</strong> from the repo into a new Google Sheet (see README → Sheet setup).</li>
+          <li style="margin-bottom:8px;">Paste <strong>PickASpotDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
+          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>Settings</strong> on any Pick A Spot deployment.</li>
         </ol>
         <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          With write-back enabled, new spots also save to your sheet. Otherwise export CSV and paste into the sheet.
+          Full steps: <strong>scripts/google-sheets/SETUP.md</strong> in the GitHub repo.
         </p>
-      `)}
-
-      ${helpSection('Record a visit', `
-        <p style="margin:0 0 10px;">Log visits in the app — no sheet edit needed. With write-back enabled, visits sync to your sheet (<strong>lastVisited</strong>, ratings, <strong>notes</strong>).</p>
-        <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;"><strong>Full visit log:</strong> History tab → <strong>+ Log Visit</strong> → enter ratings, notes, and date → <strong>Save Visit</strong>.</li>
-          <li style="margin-bottom:8px;"><strong>Quick mark:</strong> On Discover results, tap <strong>Mark Visited</strong> on a pick.</li>
-          <li><strong>Edit later:</strong> My List or History → tap a restaurant to view or update details.</li>
-        </ol>
-        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Visit data syncs to the sheet when write-back is enabled. Otherwise use Export JSON/CSV to move between devices.
-        </p>
-      `)}
-
-      ${helpSection('Map &amp; area filter', `
-        <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">Open the <strong>Map</strong> tab — pins appear for restaurants with addresses.</li>
-          <li style="margin-bottom:8px;">Tap the <strong>rectangle</strong> tool (top-right), then drag a box on the map.</li>
-          <li style="margin-bottom:8px;">Only restaurants inside the box are used on <strong>Discover</strong> when you tap Find Food.</li>
-          <li>Tap <strong>Clear area</strong> on the map or Discover to remove the filter.</li>
-        </ol>
-        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
-          Addresses from your sheet are geocoded the first time you open the map. Run <strong>Look up missing addresses</strong> in Google Sheets for best results.
-        </p>
-      `)}
-
-      ${helpSection('Pick a restaurant', `
-        <ol style="margin:0;padding-left:1.2em;">
-          <li style="margin-bottom:8px;">On <strong>Discover</strong>, set filters (location, distance, tags, reasons).</li>
-          <li style="margin-bottom:8px;">Tap <strong>Find Food</strong> for three scored picks.</li>
-          <li>Tap <strong>Spin Again</strong> to reshuffle from the same pool.</li>
-        </ol>
       `)}
 
       <div class="ios-card" style="padding:16px;text-align:center;">
@@ -951,6 +1036,7 @@ function renderActiveTab() {
   else if (state.tab === 'map') renderMap();
   else if (state.tab === 'history') renderHistory();
   else if (state.tab === 'list') renderList();
+  else if (state.tab === 'settings') renderSettings();
   else if (state.tab === 'help') renderHelp();
 }
 
@@ -1036,7 +1122,7 @@ window.clearMapAreaFilter = function() {
 window.switchTab = function(tab) {
   state.tab = tab;
   state.results = null;
-  const pages = ['discover', 'map', 'history', 'list', 'help'];
+  const pages = ['discover', 'map', 'history', 'list', 'settings', 'help'];
   pages.forEach(p => {
     const pg = document.getElementById('page-' + p);
     if (pg) pg.style.display = tab === p ? '' : 'none';
@@ -1111,12 +1197,15 @@ window.handleSpinAgain = function() {
 };
 
 window.handleListSearch = function(val) {
+  const cursor = document.getElementById('list-search')?.selectionStart;
   state.listSearch = val;
   renderList();
-  // Restore focus
   requestAnimationFrame(() => {
     const inp = document.getElementById('list-search');
-    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    if (!inp) return;
+    inp.focus();
+    const pos = cursor != null ? Math.min(cursor, inp.value.length) : inp.value.length;
+    inp.setSelectionRange(pos, pos);
   });
 };
 
@@ -1754,7 +1843,7 @@ window.syncFromSheet = async function() {
   const input = document.getElementById('sheet-url-input');
   const url = (input?.value || getSheetUrl()).trim();
   if (!url) {
-    showToast('Paste a Google Sheet link in My List first');
+    showToast('Paste a Google Sheet link in Settings first');
     return;
   }
   localStorage.setItem(SHEET_URL_KEY, url);
@@ -1854,7 +1943,6 @@ function rowToRestaurant(rowObj, existing) {
     acclaimed: boolVal === 'TRUE' || boolVal === 'YES' || boolVal === '1',
     dateSaved: rowObj.dateSaved || existing?.dateSaved || today(),
     lastVisited: rowObj.lastVisited || null,
-    bestSeasons: existing?.bestSeasons ?? [],
     ratings: {
       food: num(rowObj.food),
       vibe: num(rowObj.vibe),
@@ -1866,15 +1954,65 @@ function rowToRestaurant(rowObj, existing) {
   };
 }
 
-function toSheetCsvUrl(input) {
+function parseSheetLink(input) {
   const trimmed = input.trim();
-  if (/output=csv|format=csv|\.csv($|\?)/i.test(trimmed)) return trimmed;
+  if (!trimmed) return null;
+
+  if (/output=csv|format=csv|out:csv|\.csv($|\?)/i.test(trimmed)) {
+    return { directUrl: trimmed };
+  }
+
+  const pubMatch = trimmed.match(/spreadsheets\/d\/e\/([^/]+)/);
+  if (pubMatch) {
+    return { publishId: pubMatch[1] };
+  }
+
   const idMatch = trimmed.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch) return trimmed;
-  const id = idMatch[1];
-  const gidMatch = trimmed.match(/gid=([0-9]+)/);
-  const gid = gidMatch ? gidMatch[1] : '0';
-  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  if (!idMatch) return { directUrl: trimmed };
+
+  const gidMatch = trimmed.match(/[#?&]gid=(\d+)/);
+  return {
+    spreadsheetId: idMatch[1],
+    gid: gidMatch ? gidMatch[1] : null,
+  };
+}
+
+function sheetCsvFetchUrls(input) {
+  const parsed = parseSheetLink(input);
+  if (!parsed) return [];
+
+  if (parsed.directUrl) return [parsed.directUrl];
+
+  if (parsed.publishId) {
+    return [`https://docs.google.com/spreadsheets/d/e/${parsed.publishId}/pub?output=csv`];
+  }
+
+  const { spreadsheetId, gid } = parsed;
+  const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+  const urls = [];
+
+  if (gid != null) {
+    urls.push(`${base}/export?format=csv&gid=${gid}`);
+    urls.push(`${base}/gviz/tq?tqx=out:csv&gid=${gid}`);
+  } else {
+    urls.push(`${base}/gviz/tq?tqx=out:csv&sheet=Restaurants`);
+    urls.push(`${base}/export?format=csv&gid=0`);
+    urls.push(`${base}/gviz/tq?tqx=out:csv&gid=0`);
+  }
+
+  return [...new Set(urls)];
+}
+
+function sheetSyncErrorMessage(status) {
+  const base = status
+    ? `Could not fetch sheet (HTTP ${status}).`
+    : 'Could not fetch sheet.';
+  return `${base} Try: (1) open your Restaurants tab and copy the browser URL (include #gid=…), (2) share as Anyone with the link → Viewer, or (3) File → Share → Publish to web (CSV) and paste that link.`;
+}
+
+function toSheetCsvUrl(input) {
+  const urls = sheetCsvFetchUrls(input);
+  return urls[0] || input.trim();
 }
 
 function restaurantsFromSheetCsv(csvText, existing) {
@@ -1902,17 +2040,28 @@ function restaurantsFromSheetCsv(csvText, existing) {
 }
 
 async function syncRestaurantsFromSheetUrl(url) {
-  const csvUrl = toSheetCsvUrl(url);
-  let fetchRes;
-  try {
-    fetchRes = await fetch(csvUrl);
-  } catch {
-    return { error: 'Could not fetch sheet. Check your connection or try publishing the sheet to the web.' };
+  const csvUrls = sheetCsvFetchUrls(url);
+  if (csvUrls.length === 0) {
+    return { error: 'Paste a valid Google Sheets link.' };
   }
-  if (!fetchRes.ok) {
-    return {
-      error: `Could not fetch sheet (HTTP ${fetchRes.status}). Make sure it's shared as "Anyone with the link can view".`,
-    };
+
+  let fetchRes;
+  let lastStatus;
+  for (const csvUrl of csvUrls) {
+    try {
+      const res = await fetch(csvUrl);
+      if (res.ok) {
+        fetchRes = res;
+        break;
+      }
+      lastStatus = res.status;
+    } catch {
+      lastStatus = null;
+    }
+  }
+
+  if (!fetchRes) {
+    return { error: sheetSyncErrorMessage(lastStatus) };
   }
   try {
     const csvText = await fetchRes.text();

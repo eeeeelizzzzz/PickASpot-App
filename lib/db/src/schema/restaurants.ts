@@ -10,7 +10,6 @@ export const restaurantsTable = pgTable("restaurants", {
   reasons:      jsonb("reasons").$type<string[]>().notNull().default([]),
   dateSaved:    text("date_saved").notNull(),
   lastVisited:  text("last_visited"),
-  bestSeasons:  jsonb("best_seasons").$type<string[]>().notNull().default([]),
   ratings:      jsonb("ratings").$type<{
     food:    number | null;
     vibe:    number | null;

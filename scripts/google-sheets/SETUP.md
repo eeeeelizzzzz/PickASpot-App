@@ -88,7 +88,7 @@ Write-back lets the Pick A Spot app push changes **to** your sheet (new restaura
 
 ### Connect write-back in the app
 
-1. Open Pick A Spot → **My List** → **Sheet write-back**.
+1. Open Pick A Spot → **Settings** → **Sheet write-back**.
 2. Paste the **Web app URL** from the deployment.
 3. Paste **Config!B2** as the write secret.
 4. Tap **Save write-back settings**.
@@ -107,10 +107,11 @@ If you change `PickASpotDriveTimes.gs`, create a **New deployment** (or **Manage
 | Authorization errors | Re-run deploy and complete the Google authorization flow |
 | Row not found | Ensure the restaurant has an `id` or unique `name` in the sheet |
 | Still read-only | Write-back is optional — **Sync Now** works without a Web app deployment |
+| Sync fails (HTTP 400) | Open the **Restaurants** tab, copy the URL from the address bar (`#gid=…`), confirm **Viewer** sharing, or **File → Share → Publish to web** and use the CSV link |
 
 ## Connect the app to your sheet
 
-In the deployed Pick A Spot app (**My List** tab):
+In the deployed Pick A Spot app (**Settings** tab):
 
 | Setting | Value |
 |---------|--------|
@@ -123,7 +124,7 @@ Settings are stored in your browser per device.
 
 ## Use this deployed app with your sheet
 
-You do **not** need to fork or deploy if you only want a different restaurant list. See the root [README](../../README.md#use-the-demo-app-with-your-sheet) for the short version; the steps are the same as **Option A** or **B** above, then connect in **My List** on any Pick A Spot deployment (e.g. the [official app](https://eeeeelizzzzz.github.io/PickASpot-App/)).
+You do **not** need to fork or deploy if you only want a different restaurant list. See the root [README](../../README.md#use-the-demo-app-with-your-sheet) for the short version; the steps are the same as **Option A** or **B** above, then connect in **Settings** on any Pick A Spot deployment (e.g. the [official app](https://eeeeelizzzzz.github.io/PickASpot-App/)).
 
 Your data stays in your Google Sheet; the app is just a client.
 
