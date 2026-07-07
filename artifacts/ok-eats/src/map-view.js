@@ -99,8 +99,59 @@ export function isMapReady() {
 }
 
 export function invalidateMapSize() {
+  if (!map) return Promise.resolve();
+  return new Promise(resolve => {
+    requestAnimationFrame(() => {
+      map.invalidateSize({ animate: false });
+      requestAnimationFrame(() => {
+        map.invalidateSize({ animate: false });
+        setTimeout(resolve, 0);
+      });
+    });
+  });
+}
+
+function fitMapView(restaurants, mapFilter) {
   if (!map) return;
-  setTimeout(() => map.invalidateSize(), 50);
+  if (mapFilter) {
+    const box = L.latLngBounds(
+      [mapFilter.south, mapFilter.west],
+      [mapFilter.north, mapFilter.east],
+    );
+    if (box.isValid()) map.fitBounds(box.pad(0.12));
+    return;
+  }
+  const withCoords = restaurants.filter(r => r.lat != null && r.lng != null);
+  if (withCoords.length === 0) return;
+  const bounds = L.latLngBounds(withCoords.map(r => [r.lat, r.lng]));
+  if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+}
+
+function restoreDrawnRectangle(mapFilter) {
+  if (!drawnItems || !mapFilter) return;
+  const box = L.latLngBounds(
+    [mapFilter.south, mapFilter.west],
+    [mapFilter.north, mapFilter.east],
+  );
+  if (!box.isValid()) return;
+  drawnItems.clearLayers();
+  drawnItems.addLayer(L.rectangle(box, {
+    color: '#007AFF',
+    weight: 2,
+    fillOpacity: 0.12,
+  }));
+}
+
+/** After the user draws or clears a filter box — no geocode, no zoom-to-all-pins. */
+export function updateMapFilter(restaurants, mapFilter) {
+  if (!map) return;
+  refreshMarkers(restaurants, mapFilter);
+  if (mapFilter) {
+    restoreDrawnRectangle(mapFilter);
+    fitMapView(restaurants, mapFilter);
+  } else {
+    drawnItems?.clearLayers();
+  }
 }
 
 export function clearMapArea() {
@@ -153,6 +204,8 @@ export async function mountMapView(containerEl, opts) {
   });
   map.addControl(drawControl);
 
+  await invalidateMapSize();
+
   map.on(L.Draw.Event.CREATED, (e) => {
     if (e.layerType !== 'rectangle') return;
     drawnItems.clearLayers();
@@ -168,55 +221,25 @@ export async function mountMapView(containerEl, opts) {
   });
 }
 
-export async function syncMapView(restaurants, mapFilter, geoCache, onStatus) {
+export async function syncMapView(restaurants, mapFilter, geoCache, onStatus, options = {}) {
   if (!map) return { geocoded: 0 };
+  const { geocode = true, fitView = true } = options;
 
-  onStatus?.('Finding locations…');
-  const before = restaurants.filter(r => r.lat != null).length;
-  await ensureRestaurantCoords(restaurants, geoCache, (cur, total) => {
-    onStatus?.(`Mapping ${cur}/${total}…`);
-  });
-  const after = restaurants.filter(r => r.lat != null).length;
+  let geocoded = 0;
+  if (geocode) {
+    onStatus?.('Finding locations…');
+    const before = restaurants.filter(r => r.lat != null).length;
+    await ensureRestaurantCoords(restaurants, geoCache, (cur, total) => {
+      onStatus?.(`Mapping ${cur}/${total}…`);
+    });
+    const after = restaurants.filter(r => r.lat != null).length;
+    geocoded = after - before;
+  }
 
   refreshMarkers(restaurants, mapFilter);
 
-  const withCoords = restaurants.filter(r => r.lat != null && r.lng != null);
-  if (withCoords.length > 0) {
-    const bounds = L.latLngBounds(withCoords.map(r => [r.lat, r.lng]));
-    if (bounds.isValid()) {
-      map.fitBounds(bounds.pad(0.12));
-    }
-  }
+  if (mapFilter) restoreDrawnRectangle(mapFilter);
+  if (fitView) fitMapView(restaurants, mapFilter);
 
-  if (mapFilter) {
-    const box = L.latLngBounds(
-      [mapFilter.south, mapFilter.west],
-      [mapFilter.north, mapFilter.east],
-    );
-    if (box.isValid()) {
-      drawnItems.clearLayers();
-      drawnItems.addLayer(L.rectangle(box, {
-        color: '#007AFF',
-        weight: 2,
-        fillOpacity: 0.12,
-      }));
-    }
-  }
-
-  return { geocoded: after - before };
-}
-
-export function restoreMapRectangle(mapFilter) {
-  if (!map || !drawnItems || !mapFilter) return;
-  const box = L.latLngBounds(
-    [mapFilter.south, mapFilter.west],
-    [mapFilter.north, mapFilter.east],
-  );
-  if (!box.isValid()) return;
-  drawnItems.clearLayers();
-  drawnItems.addLayer(L.rectangle(box, {
-    color: '#007AFF',
-    weight: 2,
-    fillOpacity: 0.12,
-  }));
+  return { geocoded };
 }

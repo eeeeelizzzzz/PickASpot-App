@@ -10,6 +10,7 @@ import {
 import {
   mountMapView,
   syncMapView,
+  updateMapFilter,
   invalidateMapSize,
   clearMapArea,
   isMapReady,
@@ -1190,16 +1191,10 @@ async function renderMap() {
 
   await mountMapView(mapEl, {
     getRestaurants: () => state.restaurants,
-    onBoundsChange: async (bounds) => {
+    onBoundsChange: (bounds) => {
       state.mapFilter = bounds;
       state.results = null;
-      const geoCache = loadGeoCache();
-      await syncMapView(state.restaurants, state.mapFilter, geoCache, (msg) => {
-        const st = document.getElementById('map-status');
-        if (st) st.textContent = msg;
-      });
-      saveGeoCache(geoCache);
-      saveRestaurants();
+      updateMapFilter(state.restaurants, state.mapFilter);
       updateMapToolbar();
       if (state.tab === 'discover') renderDiscover();
     },
@@ -1223,7 +1218,7 @@ async function renderMap() {
         ? `Added ${result.geocoded} new locations`
         : undefined,
   );
-  invalidateMapSize();
+  await invalidateMapSize();
 }
 
 window.clearMapAreaFilter = function() {
@@ -1252,7 +1247,7 @@ window.switchTab = function(tab) {
     if (lbl) lbl.style.color = tab === p ? '#007AFF' : '#8E8E93';
   });
   renderActiveTab();
-  if (tab === 'map' && isMapReady()) invalidateMapSize();
+  if (tab === 'map' && isMapReady()) void invalidateMapSize();
 };
 
 window.toggleLocation = function(loc) {
