@@ -31,6 +31,21 @@ To publish your own template for others (maintainers):
 3. Add the share URL to the README under “Template sheet”.
 4. Optional: **File → Share → Publish to web** (for CSV export fallback).
 
+## Privacy & public sheets
+
+Pick A Spot never stores your sheet link, home address, or write secret in this git repo — those live in **your Google Sheet** and in **browser local storage** on each device.
+
+If your spreadsheet (or a template you share) is **Anyone with the link can view**, treat it as public:
+
+| What | Risk if shared |
+|------|----------------|
+| **Restaurants tab** | Restaurant names, addresses, tags, visit notes, and ratings are readable (including via CSV export, same as **Sync Now**). |
+| **Config!B1** (home address) | Your home address is readable. Use the placeholder (`123 Main St…`) on a public template; put your real address only in a **private copy** (File → Make a copy). |
+| **Config!B2** (write secret) | Anyone with view access can read this cell. Do not run **Set up Config sheet** on a public template you share with others — set up write-back only on your private copy. |
+| **Apps Script Web app URL** | Keep this in Pick A Spot **Settings** only; do not paste it into the sheet. |
+
+**Recommended:** Public template = example restaurants + placeholder Config. Personal list, home address, and write secret = **your private copy** in Google Drive.
+
 ## Install Apps Script
 
 1. Open your spreadsheet → **Extensions → Apps Script**.
@@ -50,7 +65,7 @@ To publish your own template for others (maintainers):
 | Cell | Purpose |
 |------|---------|
 | **Config!B1** | Your home address (for drive times) |
-| **Config!B2** | Write secret (for Pick A Spot → sheet saves). Copy into Pick A Spot **Settings → Save to Google Sheet**. |
+| **Config!B2** | Write secret (for Pick A Spot → sheet saves). Copy into Pick A Spot **Settings → Save to Google Sheet**. Never put this on a sheet shared publicly — see [Privacy & public sheets](#privacy--public-sheets). |
 
 ### Typical workflow in the sheet
 

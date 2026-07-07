@@ -75,6 +75,8 @@ Step-by-step guide: [**scripts/google-sheets/SETUP.md**](scripts/google-sheets/S
 5. **Share** the sheet: *Anyone with the link can view*.
 6. In Pick A Spot **Settings**: connect sheet link (**Sync Now**) and **Save to Google Sheet** (Apps Script Web app + **Config!B2**).
 
+See [Privacy & public sheets](scripts/google-sheets/SETUP.md#privacy--public-sheets) if you use the [template sheet](https://docs.google.com/spreadsheets/d/1pfqR5V4FRgvMyLmPOguxkgPgFG10zJJazSDfuozXkSM/edit?usp=sharing) or share your own sheet publicly.
+
 | Method | Link |
 |--------|------|
 | **Import CSV** | [`scripts/google-sheets/example-restaurants.csv`](scripts/google-sheets/example-restaurants.csv) |
