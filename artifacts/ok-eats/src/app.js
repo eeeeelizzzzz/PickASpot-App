@@ -652,7 +652,20 @@ function renderHistory() {
 
 // ─── Render: List Tab ─────────────────────────────────────────────────────────
 
-function restaurantActionsHtml() {
+function restaurantActionsHtml(opts = {}) {
+  const sheetUrl = getSheetUrl();
+  const sheetLinkBtn = opts.showSheetLink && sheetUrl ? `
+      <button onclick="openGoogleSheet()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <span style="width:28px;height:28px;background:#34A853;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;color:white;flex-shrink:0;">📊</span>
+          <div style="text-align:left;min-width:0;">
+            <div style="font-size:15px;font-weight:600;color:#000;">Open Google Sheet</div>
+            <div style="font-size:12px;color:#8E8E93;">View or edit your source spreadsheet</div>
+          </div>
+        </div>
+        <span style="color:#007AFF;font-size:16px;flex-shrink:0;margin-left:8px;">↗</span>
+      </button>` : '';
+
   return `
     <div style="display:flex;flex-direction:column;gap:8px;">
       <button onclick="openAddRestaurant()" style="background:white;border:none;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
@@ -662,6 +675,7 @@ function restaurantActionsHtml() {
           <div style="font-size:12px;color:#8E8E93;">Add a new spot to your list</div>
         </div>
       </button>
+      ${sheetLinkBtn}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <button onclick="exportData()" style="background:white;border:none;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);font-family:inherit;" ontouchstart="">
           <span style="width:26px;height:26px;background:#34C75920;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">⬆️</span>
@@ -790,7 +804,7 @@ function renderList() {
     </div>
 
     <div style="padding:0 20px 12px;">
-      ${restaurantActionsHtml()}
+      ${restaurantActionsHtml({ showSheetLink: true })}
     </div>
 
     <div style="padding:0 20px 8px;">
@@ -1908,6 +1922,15 @@ window.saveHomeAddress = async function() {
 window.updateDriveTimes = async function() {
   await recalculateDistances();
   renderActiveTab();
+};
+
+window.openGoogleSheet = function() {
+  const url = getSheetUrl().trim();
+  if (!url) {
+    showToast('No sheet link saved — set one in Settings');
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
 };
 
 window.saveSheetUrl = function() {
