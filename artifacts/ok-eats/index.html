@@ -9,7 +9,8 @@
   <meta name="theme-color" content="#F2F2F7" />
   <meta name="description" content="Oklahoma Restaurant Recommendations for couples" />
   <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/jpeg" href="./icon.jpg" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
   <title>OK Eats</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -190,13 +191,39 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 2px;
-      padding: 9px 0 8px;
+      gap: 1px;
+      padding: 8px 0 7px;
       flex: 1;
       cursor: pointer;
       border: none;
       background: none;
       transition: opacity 0.12s;
+      min-width: 0;
+    }
+    .tab-btn span:last-child {
+      font-size: 9px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .page-map {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-bottom: 0;
+    }
+    #ok-eats-map {
+      flex: 1;
+      min-height: 200px;
+      width: 100%;
+      z-index: 0;
+    }
+    #map-toolbar {
+      flex-shrink: 0;
+    }
+    .leaflet-control-draw-rectangle {
+      background-image: none !important;
     }
     .search-wrap {
       background: rgba(118,118,128,0.12);
@@ -243,21 +270,34 @@
 <body>
   <div id="app">
     <div id="page-discover" class="page" style="padding-top: var(--safe-top);"></div>
+    <div id="page-map"     class="page page-map" style="display:none;">
+      <div id="map-toolbar"></div>
+      <div id="ok-eats-map"></div>
+    </div>
     <div id="page-list"     class="page" style="display:none; padding-top: var(--safe-top);"></div>
     <div id="page-history"  class="page" style="display:none; padding-top: var(--safe-top);"></div>
+    <div id="page-help"     class="page" style="display:none; padding-top: var(--safe-top);"></div>
     <div class="tab-bar">
       <div style="display:flex;">
         <button class="tab-btn" id="tab-discover" onclick="switchTab('discover')">
-          <span style="font-size:22px;">🍽️</span>
+          <span style="font-size:20px;">🍽️</span>
           <span id="tab-label-discover" style="font-size:10px;font-weight:600;color:#007AFF;">Discover</span>
         </button>
+        <button class="tab-btn" id="tab-map" onclick="switchTab('map')">
+          <span style="font-size:20px;">🗺️</span>
+          <span id="tab-label-map" style="font-size:10px;font-weight:600;color:#8E8E93;">Map</span>
+        </button>
         <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
-          <span style="font-size:22px;">🗓️</span>
+          <span style="font-size:20px;">🗓️</span>
           <span id="tab-label-history" style="font-size:10px;font-weight:600;color:#8E8E93;">History</span>
         </button>
         <button class="tab-btn" id="tab-list" onclick="switchTab('list')">
-          <span style="font-size:22px;">📋</span>
-          <span id="tab-label-list" style="font-size:10px;font-weight:600;color:#8E8E93;">My List</span>
+          <span style="font-size:20px;">📋</span>
+          <span id="tab-label-list" style="font-size:10px;font-weight:600;color:#8E8E93;">List</span>
+        </button>
+        <button class="tab-btn" id="tab-help" onclick="switchTab('help')">
+          <span style="font-size:20px;">❓</span>
+          <span id="tab-label-help" style="font-size:10px;font-weight:600;color:#8E8E93;">How To</span>
         </button>
       </div>
     </div>

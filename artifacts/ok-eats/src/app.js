@@ -1,13 +1,41 @@
 // ─── Data & Constants ────────────────────────────────────────────────────────
 
-const STORAGE_KEY    = 'ok_eats_restaurants_v2';
-const SHEET_URL_KEY  = 'ok_eats_sheet_url';
-const SHEET_SYNC_KEY = 'ok_eats_sheet_last_sync';
-const API_BASE       = '/api/restaurants';
+import {
+  recalculateRestaurantDistances,
+  DRIVE_SHORT_MAX,
+  DRIVE_LONGER_MAX,
+  bucketFromDriveMinutes,
+  restaurantGeocodeQuery,
+} from './drive-time.js';
+import {
+  mountMapView,
+  syncMapView,
+  invalidateMapSize,
+  clearMapArea,
+  isMapReady,
+} from './map-view.js';
+import {
+  canSheetWrite,
+  getSheetWriteUrl,
+  getSheetWriteSecret,
+  saveSheetWriteConfig,
+  pushRestaurantToSheet,
+  deleteRestaurantFromSheet,
+} from './sheet-write.js';
+
+const STORAGE_KEY       = 'ok_eats_restaurants_v2';
+const SHEET_URL_KEY     = 'ok_eats_sheet_url';
+const SHEET_SYNC_KEY    = 'ok_eats_sheet_last_sync';
+const HOME_ADDRESS_KEY  = 'ok_eats_home_address';
+const GEO_CACHE_KEY     = 'ok_eats_geo_cache';
+const USE_API        = import.meta.env.VITE_USE_API === 'true';
+const API_BASE       = import.meta.env.VITE_API_BASE || '/api/restaurants';
+const GITHUB_REPO_URL = import.meta.env.VITE_GITHUB_REPO_URL || '';
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
 async function apiCall(path, opts = {}) {
+  if (!USE_API) return null;
   try {
     const res = await fetch(path, {
       headers: { 'Content-Type': 'application/json' },
@@ -22,18 +50,38 @@ async function apiCall(path, opts = {}) {
 }
 
 function apiSave(r) {
-  return apiCall(`${API_BASE}/${r.id}`, { method: 'PUT', body: JSON.stringify(r) });
+  if (USE_API) return apiCall(`${API_BASE}/${r.id}`, { method: 'PUT', body: JSON.stringify(r) });
+  if (canSheetWrite()) {
+    pushRestaurantToSheet(r).then((result) => {
+      if (result.error) showToast(`Sheet save failed: ${result.error}`);
+    });
+  }
+  return Promise.resolve(null);
 }
 
 function apiCreate(r) {
-  return apiCall(API_BASE, { method: 'POST', body: JSON.stringify(r) });
+  if (USE_API) return apiCall(API_BASE, { method: 'POST', body: JSON.stringify(r) });
+  if (canSheetWrite()) {
+    pushRestaurantToSheet(r).then((result) => {
+      if (result.error) showToast(`Sheet save failed: ${result.error}`);
+      else if (result.ok) showToast('Saved to sheet ✓');
+    });
+  }
+  return Promise.resolve(null);
 }
 
 function apiRemove(id) {
-  return apiCall(`${API_BASE}/${id}`, { method: 'DELETE' });
+  if (USE_API) return apiCall(`${API_BASE}/${id}`, { method: 'DELETE' });
+  if (canSheetWrite()) {
+    deleteRestaurantFromSheet(id).then((result) => {
+      if (result.error) showToast(`Sheet delete failed: ${result.error}`);
+    });
+  }
+  return Promise.resolve(null);
 }
 
 function apiBulk(arr) {
+  if (!USE_API) return Promise.resolve(null);
   return apiCall(`${API_BASE}/bulk`, { method: 'POST', body: JSON.stringify(arr) });
 }
 
@@ -108,6 +156,7 @@ let state = {
   top10Pool: null,
   listSearch: '',
   expandedFilters: false,
+  mapFilter: null,
 };
 
 function loadRestaurantsLocal() {
@@ -123,6 +172,74 @@ function loadRestaurantsLocal() {
 
 function saveRestaurants() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.restaurants));
+}
+
+function getHomeAddress() {
+  return localStorage.getItem(HOME_ADDRESS_KEY) || '';
+}
+
+function loadGeoCache() {
+  try {
+    const raw = localStorage.getItem(GEO_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGeoCache(cache) {
+  localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache));
+}
+
+function applyGeoCacheToRestaurants() {
+  const cache = loadGeoCache();
+  state.restaurants.forEach(r => {
+    if (r.lat != null && r.lng != null) return;
+    const key = restaurantGeocodeQuery(r).trim().toLowerCase();
+    const geo = cache[key];
+    if (geo) {
+      r.lat = geo.lat;
+      r.lng = geo.lon;
+    }
+  });
+}
+
+function formatDistanceLabel(r) {
+  if (!r.distance && r.driveTimeMin == null) return '';
+  if (r.distance === 'In-town') return 'In-town';
+  if (r.driveTimeMin != null) return `${r.distance} · ${r.driveTimeMin} min`;
+  return r.distance || '';
+}
+
+async function recalculateDistances() {
+  const home = getHomeAddress();
+  if (!home) {
+    showToast('Set your home address in My List first');
+    return { error: 'no_home' };
+  }
+  if (state.restaurants.length === 0) return { updated: 0 };
+
+  showToast('Calculating drive times…');
+  const geoCache = loadGeoCache();
+  const result = await recalculateRestaurantDistances(
+    state.restaurants,
+    home,
+    geoCache,
+    (current, total, name) => {
+      if (current === 1 || current === total || current % 5 === 0) {
+        showToast(`Drive times: ${current}/${total}…`);
+      }
+    },
+  );
+  saveGeoCache(geoCache);
+  saveRestaurants();
+
+  if (result.error === 'home_geocode') {
+    showToast('Could not find your home address — check spelling');
+    return result;
+  }
+  showToast(`Updated drive times for ${result.updated} restaurants`);
+  return result;
 }
 
 // ─── Scoring Engine ───────────────────────────────────────────────────────────
@@ -153,6 +270,25 @@ function scoreRestaurant(r) {
   return score;
 }
 
+function isInMapBounds(r) {
+  const b = state.mapFilter;
+  if (!b || r.lat == null || r.lng == null) return !b;
+  return (
+    r.lat >= b.south && r.lat <= b.north &&
+    r.lng >= b.west && r.lng <= b.east
+  );
+}
+
+function countMapFilterMatches() {
+  if (!state.mapFilter) return 0;
+  return state.restaurants.filter(r => isInMapBounds(r)).length;
+}
+
+function applyMapFilter(pool) {
+  if (!state.mapFilter) return pool;
+  return pool.filter(r => r.lat != null && r.lng != null && isInMapBounds(r));
+}
+
 function findRecommendations() {
   const { locations, tags, distance, reasons } = state.filters;
   let pool = state.restaurants.slice();
@@ -170,6 +306,7 @@ function findRecommendations() {
   if (reasons.length > 0) {
     pool = pool.filter(r => reasons.every(reason => (r.reasons || []).includes(reason)));
   }
+  pool = applyMapFilter(pool);
 
   // Score
   pool = pool.map(r => ({ ...r, _score: scoreRestaurant(r) }));
@@ -243,6 +380,13 @@ function renderDiscover() {
 
   const activeCount = filters.locations.length + filters.tags.length + filters.distance.length + filters.reasons.length;
   const activeLabel = activeCount > 0 ? `<span style="background:#007AFF;color:white;border-radius:100px;padding:0 6px;font-size:11px;font-weight:700;margin-left:4px;">${activeCount}</span>` : '';
+  const mapFilterBanner = state.mapFilter ? `
+    <div style="margin:0 20px 12px;padding:12px 14px;background:#E3F2FD;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-size:13px;color:#0D47A1;line-height:1.4;">
+        <strong>Map area</strong> — ${countMapFilterMatches()} places in box
+      </div>
+      <button onclick="clearMapAreaFilter()" style="background:white;color:#007AFF;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;flex-shrink:0;">Clear</button>
+    </div>` : '';
 
   let resultsHtml = '';
   if (results) {
@@ -273,14 +417,20 @@ function renderDiscover() {
 
   el.innerHTML = `
     <div style="padding:20px 20px 12px;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
         <div>
           <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;line-height:1.1;">OK Eats</div>
           <div style="font-size:14px;color:#8E8E93;margin-top:2px;font-weight:400;">What are you in the mood for?</div>
+          ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:4px;">Sheet last synced: ${lastSheetSync()}</div>` : ''}
         </div>
-        <div style="font-size:13px;color:#007AFF;font-weight:500;cursor:pointer;" onclick="clearFilters()">Clear all</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+          <button onclick="syncFromSheet()" style="background:#007AFF;color:white;border:none;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(0,122,255,0.25);">Sync Now</button>
+          <div style="font-size:13px;color:#007AFF;font-weight:500;cursor:pointer;" onclick="clearFilters()">Clear all</div>
+        </div>
       </div>
     </div>
+
+    ${mapFilterBanner}
 
     <div style="padding:0 20px 14px;">
       <div class="ios-card" style="padding:16px;">
@@ -327,6 +477,7 @@ function getPoolSize() {
   if (filters.distance.length > 0) pool = pool.filter(r => filters.distance.includes(r.distance));
   if (filters.tags.length > 0) pool = pool.filter(r => filters.tags.every(tag => r.tags.includes(tag)));
   if (filters.reasons.length > 0) pool = pool.filter(r => filters.reasons.every(reason => (r.reasons || []).includes(reason)));
+  pool = applyMapFilter(pool);
   return pool.length;
 }
 
@@ -365,7 +516,7 @@ function renderResultCard(r, index) {
         </div>
       </div>
       <div style="padding:12px 16px 14px;border-top:0.5px solid #F2F2F7;">
-        <div style="font-size:12px;color:#8E8E93;font-weight:500;margin-bottom:8px;">${escHtml(r.distance || '')}</div>
+        <div style="font-size:12px;color:#8E8E93;font-weight:500;margin-bottom:8px;">${escHtml(formatDistanceLabel(r))}</div>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
           ${reasonBadges}
           ${tagBadges}
@@ -526,7 +677,7 @@ function renderList() {
               <div style="font-size:15px;font-weight:600;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.name)}</div>
               ${(r.reasons || []).includes('Favorite') ? '<span style="color:#FFCC00;font-size:12px;flex-shrink:0;">★</span>' : ''}
             </div>
-            <div style="font-size:12px;color:#8E8E93;">${escHtml(r.location)} · ${visitedText}</div>
+            <div style="font-size:12px;color:#8E8E93;">${escHtml(r.location)} · ${visitedText}${r.distance ? ` · ${escHtml(formatDistanceLabel(r))}` : ''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-left:10px;">
             <span style="background:${tierCfg.bg};width:8px;height:8px;border-radius:50%;flex-shrink:0;"></span>
@@ -608,6 +759,22 @@ function renderList() {
     </div>
 
     <div style="padding:0 20px 16px;">
+      <div class="ios-card" style="padding:14px 16px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">🏠</span>
+          <div style="font-size:14px;font-weight:600;color:#000;">Home address</div>
+        </div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
+          Optional fallback if you don't use the sheet Apps Script. For drive times, use
+          <strong>OK Eats → Update all drive times</strong> in Google Sheets instead.
+        </div>
+        <input id="home-address-input" class="ios-input" type="text" placeholder="e.g. 123 Main St, Norman, OK" value="${escHtml(getHomeAddress())}" style="margin-bottom:8px;" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveHomeAddress()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Save Home</button>
+          <button onclick="updateDriveTimes()" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Update Drive Times</button>
+        </div>
+      </div>
+
       <div class="ios-card" style="padding:14px 16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:16px;">🔗</span>
@@ -623,6 +790,22 @@ function renderList() {
         </div>
         ${getSheetUrl() ? `<div style="font-size:11px;color:#8E8E93;margin-top:8px;">Last synced: ${lastSheetSync()}</div>` : ''}
       </div>
+
+      <div class="ios-card" style="padding:14px 16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:16px;">⬆️</span>
+          <div style="font-size:14px;font-weight:600;color:#000;">Sheet write-back</div>
+        </div>
+        <div style="font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.4;">
+          Saves new restaurants and visit logs to your sheet. Deploy Apps Script as a Web app (How To), then paste URL and Config!B2 secret.
+        </div>
+        <input id="sheet-write-url-input" class="ios-input" type="text" placeholder="Apps Script web app URL…" value="${escHtml(getSheetWriteUrl())}" style="margin-bottom:8px;" />
+        <input id="sheet-write-secret-input" class="ios-input" type="password" placeholder="Write secret (Config!B2)…" value="${escHtml(getSheetWriteSecret())}" style="margin-bottom:8px;" />
+        <button onclick="saveSheetWriteBack()" style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
+          Save write-back settings
+        </button>
+        ${canSheetWrite() ? '<div style="font-size:11px;color:#34C759;margin-top:8px;">Write-back enabled</div>' : ''}
+      </div>
     </div>
 
     <div style="padding:0 20px 32px;">
@@ -631,21 +814,234 @@ function renderList() {
   `;
 }
 
+// ─── Render: Help Tab ─────────────────────────────────────────────────────────
+
+function helpSection(title, bodyHtml) {
+  return `
+    <div class="ios-card" style="padding:16px;margin-bottom:12px;">
+      <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:8px;">${title}</div>
+      <div style="font-size:14px;color:#3C3C43;line-height:1.55;">${bodyHtml}</div>
+    </div>`;
+}
+
+function renderHelp() {
+  const el = document.getElementById('page-help');
+  const sheetSaved = !!getSheetUrl();
+
+  el.innerHTML = `
+    <div style="padding:20px 20px 12px;">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#000;margin-bottom:4px;">How To</div>
+      <div style="font-size:14px;color:#8E8E93;">Quick guide to using OK Eats</div>
+    </div>
+
+    <div style="padding:0 20px 32px;">
+      ${helpSection('Run your own OK Eats', `
+        <p style="margin:0 0 10px;">Use this app with <strong>your own</strong> Google Sheet — no fork required. Or fork the repo and deploy your own copy on GitHub Pages.</p>
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Import <strong>example-restaurants.csv</strong> from the repo into a new Google Sheet (see README → Sheet setup).</li>
+          <li style="margin-bottom:8px;">Paste <strong>OkEatsDriveTimes.gs</strong> into Extensions → Apps Script on that sheet.</li>
+          <li style="margin-bottom:8px;">Connect your sheet link (and optional write-back) in <strong>My List</strong> on any OK Eats deployment.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Full steps: <strong>scripts/google-sheets/SETUP.md</strong> in the GitHub repo.
+        </p>
+      `)}
+
+      ${helpSection('Write to your Google Sheet', `
+        <p style="margin:0 0 10px;">New restaurants and visit updates can save back to the sheet automatically.</p>
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">In Google Sheets: <strong>OK Eats → Set up Config sheet</strong> (creates secret in <strong>Config!B2</strong>).</li>
+          <li style="margin-bottom:8px;"><strong>Deploy → New deployment → Web app</strong> — Execute as: Me, Who has access: Anyone.</li>
+          <li style="margin-bottom:8px;">In the app <strong>My List</strong>, paste the Web app URL and secret under <strong>Sheet write-back</strong>.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          ${canSheetWrite() ? 'Write-back is enabled on this device.' : 'Write-back is not configured yet.'}
+        </p>
+      `)}
+
+      ${helpSection('Sync from your Google Sheet', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Add <strong>address</strong>, <strong>driveTimeMin</strong>, and <strong>distance</strong> columns; run <strong>OK Eats → Update all drive times</strong> in the sheet (see README).</li>
+          <li style="margin-bottom:8px;">Share your sheet as <strong>Anyone with the link can view</strong>.</li>
+          <li style="margin-bottom:8px;">Go to <strong>My List</strong>, paste the sheet link, and tap <strong>Save Link</strong>.</li>
+          <li>Tap <strong>Sync Now</strong> on Discover or My List whenever you want to pull in sheet edits.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Sheet changes are <strong>not</strong> automatic — sync after editing the sheet or updating drive times.
+          ${sheetSaved ? `Last synced: ${lastSheetSync()}.` : 'No sheet link saved yet — set one up in My List.'}
+        </p>
+      `)}
+
+      ${helpSection('Drive time &amp; distance labels', `
+        <p style="margin:0 0 10px;">Drive times are calculated in your Google Sheet with Apps Script (see README). The app reads <strong>driveTimeMin</strong> and <strong>distance</strong> on sync.</p>
+        <ul style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:6px;"><strong>In-town</strong> — within Norman city limits</li>
+          <li style="margin-bottom:6px;"><strong>Short Drive</strong> — under ${DRIVE_SHORT_MAX} minutes</li>
+          <li style="margin-bottom:6px;"><strong>Longer Drive</strong> — ${DRIVE_SHORT_MAX}–${DRIVE_LONGER_MAX} minutes</li>
+          <li><strong>Destination</strong> — over ${DRIVE_LONGER_MAX} minutes</li>
+        </ul>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          In the sheet: <strong>OK Eats → Update all drive times</strong>. Optional: set a home address here and tap <strong>Update Drive Times</strong> only if you skip the script.
+        </p>
+      `)}
+
+      ${helpSection('Add a new restaurant', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Open the <strong>My List</strong> tab.</li>
+          <li style="margin-bottom:8px;">Tap <strong>Add Restaurant</strong>.</li>
+          <li style="margin-bottom:8px;">Fill in name, location, tier, tags, and optional last-visited date.</li>
+          <li>Tap <strong>Add Restaurant</strong> to save.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          With write-back enabled, new spots also save to your sheet. Otherwise export CSV and paste into the sheet.
+        </p>
+      `)}
+
+      ${helpSection('Record a visit', `
+        <p style="margin:0 0 10px;">Log visits in the app — no sheet edit needed. With write-back enabled, visits sync to your sheet (<strong>lastVisited</strong>, ratings, <strong>notes</strong>).</p>
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;"><strong>Full visit log:</strong> History tab → <strong>+ Log Visit</strong> → enter ratings, notes, and date → <strong>Save Visit</strong>.</li>
+          <li style="margin-bottom:8px;"><strong>Quick mark:</strong> On Discover results, tap <strong>Mark Visited</strong> on a pick.</li>
+          <li><strong>Edit later:</strong> My List or History → tap a restaurant to view or update details.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Visit data syncs to the sheet when write-back is enabled. Otherwise use Export JSON/CSV to move between devices.
+        </p>
+      `)}
+
+      ${helpSection('Map &amp; area filter', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">Open the <strong>Map</strong> tab — pins appear for restaurants with addresses.</li>
+          <li style="margin-bottom:8px;">Tap the <strong>rectangle</strong> tool (top-right), then drag a box on the map.</li>
+          <li style="margin-bottom:8px;">Only restaurants inside the box are used on <strong>Discover</strong> when you tap Find Food.</li>
+          <li>Tap <strong>Clear area</strong> on the map or Discover to remove the filter.</li>
+        </ol>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Addresses from your sheet are geocoded the first time you open the map. Run <strong>Look up missing addresses</strong> in Google Sheets for best results.
+        </p>
+      `)}
+
+      ${helpSection('Pick a restaurant', `
+        <ol style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;">On <strong>Discover</strong>, set filters (location, distance, tags, reasons).</li>
+          <li style="margin-bottom:8px;">Tap <strong>Find Food</strong> for three scored picks.</li>
+          <li>Tap <strong>Spin Again</strong> to reshuffle from the same pool.</li>
+        </ol>
+      `)}
+
+      <div class="ios-card" style="padding:16px;text-align:center;">
+        <div style="font-size:15px;font-weight:700;color:#000;margin-bottom:6px;">Source &amp; feedback</div>
+        <div style="font-size:14px;color:#8E8E93;margin-bottom:12px;line-height:1.5;">
+          OK Eats is open source.${GITHUB_REPO_URL ? ' Report issues or view the code on GitHub.' : ''}
+        </div>
+        ${GITHUB_REPO_URL ? `<a href="${escHtml(GITHUB_REPO_URL)}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-block;background:#007AFF;color:white;text-decoration:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;">
+          View on GitHub
+        </a>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderActiveTab() {
+  if (state.tab === 'discover') renderDiscover();
+  else if (state.tab === 'map') renderMap();
+  else if (state.tab === 'history') renderHistory();
+  else if (state.tab === 'list') renderList();
+  else if (state.tab === 'help') renderHelp();
+}
+
+function updateMapToolbar(statusText) {
+  const toolbar = document.getElementById('map-toolbar');
+  if (!toolbar) return;
+  const pinned = state.restaurants.filter(r => r.lat != null && r.lng != null).length;
+  const inArea = state.mapFilter ? countMapFilterMatches() : pinned;
+  toolbar.innerHTML = `
+    <div style="padding:14px 16px 10px;padding-top:calc(14px + var(--safe-top));background:#F2F2F7;border-bottom:0.5px solid #E5E5EA;">
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;color:#000;margin-bottom:4px;">Map</div>
+      <div id="map-status" style="font-size:12px;color:#8E8E93;line-height:1.4;margin-bottom:8px;">
+        ${escHtml(statusText || (state.mapFilter
+          ? `${inArea} places in selected area · ${pinned} on map`
+          : `${pinned} places mapped · draw a box to filter Discover`))}
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${state.mapFilter ? `<button onclick="clearMapAreaFilter()" style="flex:1;background:#F2F2F7;color:#007AFF;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">Clear area</button>` : ''}
+        <button onclick="switchTab('discover')" style="flex:1;background:#007AFF;color:white;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">
+          ${state.mapFilter ? 'Pick from area' : 'Discover'}
+        </button>
+      </div>
+    </div>`;
+}
+
+let mapSyncToken = 0;
+
+async function renderMap() {
+  const mapEl = document.getElementById('ok-eats-map');
+  if (!mapEl) return;
+
+  updateMapToolbar();
+
+  await mountMapView(mapEl, {
+    getRestaurants: () => state.restaurants,
+    onBoundsChange: async (bounds) => {
+      state.mapFilter = bounds;
+      state.results = null;
+      const geoCache = loadGeoCache();
+      await syncMapView(state.restaurants, state.mapFilter, geoCache, (msg) => {
+        const st = document.getElementById('map-status');
+        if (st) st.textContent = msg;
+      });
+      saveGeoCache(geoCache);
+      saveRestaurants();
+      updateMapToolbar();
+      if (state.tab === 'discover') renderDiscover();
+    },
+    onMarkerClick: (id) => openRestaurantDetail(id),
+  });
+
+  const token = ++mapSyncToken;
+  const geoCache = loadGeoCache();
+  const result = await syncMapView(state.restaurants, state.mapFilter, geoCache, (msg) => {
+    if (token !== mapSyncToken) return;
+    const st = document.getElementById('map-status');
+    if (st) st.textContent = msg;
+  });
+  if (token !== mapSyncToken) return;
+  saveGeoCache(geoCache);
+  saveRestaurants();
+  updateMapToolbar(
+    state.mapFilter
+      ? `${countMapFilterMatches()} in area · ${state.restaurants.filter(r => r.lat != null).length} on map`
+      : result.geocoded > 0
+        ? `Added ${result.geocoded} new locations`
+        : undefined,
+  );
+  invalidateMapSize();
+}
+
+window.clearMapAreaFilter = function() {
+  state.mapFilter = null;
+  state.results = null;
+  clearMapArea();
+  renderMap();
+  if (state.tab === 'discover') renderDiscover();
+  showToast('Map area filter cleared');
+};
+
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 window.switchTab = function(tab) {
   state.tab = tab;
   state.results = null;
-  const pages = ['discover', 'history', 'list'];
+  const pages = ['discover', 'map', 'history', 'list', 'help'];
   pages.forEach(p => {
     const pg = document.getElementById('page-' + p);
     if (pg) pg.style.display = tab === p ? '' : 'none';
     const lbl = document.getElementById('tab-label-' + p);
     if (lbl) lbl.style.color = tab === p ? '#007AFF' : '#8E8E93';
   });
-  if (tab === 'discover') renderDiscover();
-  else if (tab === 'history') renderHistory();
-  else renderList();
+  renderActiveTab();
+  if (tab === 'map' && isMapReady()) invalidateMapSize();
 };
 
 window.toggleLocation = function(loc) {
@@ -736,7 +1132,6 @@ window.openLogVisit = function() {
   const root = document.getElementById('modal-root');
   const tierOptions    = TIERS.map(t     => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   const locationOptions= LOCATIONS.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
-  const distanceOptions = DISTANCE.map(d => `<option value="${escHtml(d)}">${escHtml(d)}</option>`).join('');
   const tagCheckboxes  = ALL_TAGS.map(tag => `
     <label style="display:flex;align-items:center;gap:9px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;border-bottom:0.5px solid #F5F5F5;">
       <input type="checkbox" name="lv-tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;flex-shrink:0;" />
@@ -782,8 +1177,8 @@ window.openLogVisit = function() {
                 </div>
               </div>
               <div>
-                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Distance</div>
-                <select id="lv-distance" class="ios-select">${distanceOptions}</select>
+                <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;">Address</div>
+                <input id="lv-address" class="ios-input" type="text" placeholder="Street address (optional)" />
               </div>
             </div>
           </div>
@@ -832,7 +1227,7 @@ window.openLogVisit = function() {
     </div>`;
 };
 
-window.submitLogVisit = function() {
+window.submitLogVisit = async function() {
   const name = document.getElementById('lv-name').value.trim();
   if (!name) {
     const el = document.getElementById('lv-name');
@@ -844,7 +1239,7 @@ window.submitLogVisit = function() {
 
   const location    = document.getElementById('lv-location').value;
   const tier        = document.getElementById('lv-tier').value;
-  const distance    = document.getElementById('lv-distance').value;
+  const address     = (document.getElementById('lv-address')?.value || '').trim();
   const lastVisited = document.getElementById('lv-visited').value || today();
   const tags        = [...document.querySelectorAll('input[name="lv-tags"]:checked')].map(e => e.value);
   const reasons     = [...document.querySelectorAll('input[name="lv-reasons"]:checked')].map(e => e.value);
@@ -862,7 +1257,9 @@ window.submitLogVisit = function() {
     tier,
     tags,
     reasons,
-    distance,
+    address,
+    distance: '',
+    driveTimeMin: null,
     dateSaved:   today(),
     lastVisited,
     ratings: { food, vibe, service, parking: parking || null, cost: cost || null },
@@ -872,6 +1269,9 @@ window.submitLogVisit = function() {
   state.restaurants.push(newR);
   saveRestaurants();
   apiCreate(newR);
+  if (getHomeAddress()) {
+    await recalculateDistances();
+  }
   closeModal();
   renderHistory();
   showToast(`${name} logged!`);
@@ -883,7 +1283,6 @@ window.openAddRestaurant = function() {
   const root = document.getElementById('modal-root');
   const tierOptions = TIERS.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   const locationOptions = LOCATIONS.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
-  const distanceOptions = DISTANCE.map(d => `<option value="${escHtml(d)}">${escHtml(d)}</option>`).join('');
   const tagCheckboxes = ALL_TAGS.map(tag => `
     <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
       <input type="checkbox" name="tags" value="${escHtml(tag)}" style="width:17px;height:17px;accent-color:#007AFF;" />
@@ -921,10 +1320,8 @@ window.openAddRestaurant = function() {
             </select>
           </div>
           <div style="margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Distance</div>
-            <select id="add-distance" class="ios-select">
-              ${distanceOptions}
-            </select>
+            <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Address</div>
+            <input id="add-address" class="ios-input" type="text" placeholder="Street address (for drive time)" />
           </div>
           <div style="margin-bottom:12px;">
             <div style="font-size:12px;font-weight:600;color:#8E8E93;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;">Tags</div>
@@ -946,12 +1343,12 @@ window.openAddRestaurant = function() {
     </div>`;
 };
 
-window.submitAddRestaurant = function() {
+window.submitAddRestaurant = async function() {
   const name = document.getElementById('add-name').value.trim();
   if (!name) { shakeEl('add-name'); return; }
   const location = document.getElementById('add-location').value;
   const tier = document.getElementById('add-tier').value;
-  const distance = document.getElementById('add-distance').value;
+  const address = (document.getElementById('add-address')?.value || '').trim();
   const lastVisited = document.getElementById('add-visited').value || null;
   const tags = [...document.querySelectorAll('input[name="tags"]:checked')].map(el => el.value);
   const reasons = [...document.querySelectorAll('input[name="reasons"]:checked')].map(el => el.value);
@@ -962,7 +1359,9 @@ window.submitAddRestaurant = function() {
     tier,
     tags,
     reasons,
-    distance,
+    address,
+    distance: '',
+    driveTimeMin: null,
     dateSaved: today(),
     lastVisited,
   };
@@ -970,6 +1369,9 @@ window.submitAddRestaurant = function() {
   saveRestaurants();
   apiCreate(newR);
   closeModal();
+  if (getHomeAddress()) {
+    await recalculateDistances();
+  }
   renderList();
   showToast(`${name} added!`);
 };
@@ -995,9 +1397,6 @@ window.openRestaurantDetail = function(id) {
   ).join('');
   const locationOptionHtml = LOCATIONS.map(l =>
     `<option value="${escHtml(l)}" ${r.location === l ? 'selected' : ''}>${escHtml(l)}</option>`
-  ).join('');
-  const distanceOptionHtml = DISTANCE.map(d =>
-    `<option value="${escHtml(d)}" ${r.distance === d ? 'selected' : ''}>${escHtml(d)}</option>`
   ).join('');
   const reasonCheckboxHtml = REASONS.map(reason => `
     <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:14px;color:#000;">
@@ -1094,9 +1493,13 @@ window.openRestaurantDetail = function(id) {
               <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Location</div>
               <select id="detail-location" class="ios-select" style="box-shadow:none;padding-left:0;">${locationOptionHtml}</select>
             </div>
+            <div style="padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">
+              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Address</div>
+              <input id="detail-address" class="ios-input" type="text" value="${escHtml(r.address || '')}" placeholder="Street address (for drive time)" />
+            </div>
             <div style="padding:14px 16px;">
-              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Distance</div>
-              <select id="detail-distance" class="ios-select" style="box-shadow:none;padding-left:0;">${distanceOptionHtml}</select>
+              <div style="font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">Drive Time</div>
+              <div style="font-size:14px;color:#000;font-weight:500;">${escHtml(formatDistanceLabel(r) || 'Set home address and tap Update Drive Times')}</div>
             </div>
           </div>
           <div class="ios-card" style="margin-top:10px;padding:4px 16px;">
@@ -1141,17 +1544,17 @@ window.saveLastVisited = function(id) {
   showToast(`Visit date updated!`);
 };
 
-window.saveDetailChanges = function(id) {
+window.saveDetailChanges = async function(id) {
   const r = state.restaurants.find(r => r.id === id);
   if (!r) return;
   const tier        = document.getElementById('detail-tier').value;
   const location    = document.getElementById('detail-location').value;
-  const distance    = document.getElementById('detail-distance')?.value;
+  const address     = (document.getElementById('detail-address')?.value || '').trim();
   const visitedDate = document.getElementById('detail-visited-date').value;
   const reasons     = [...document.querySelectorAll('input[name="detail-reasons"]:checked')].map(e => e.value);
   if (tier)        r.tier        = tier;
   if (location)    r.location    = location;
-  if (distance)    r.distance    = distance;
+  r.address = address;
   if (visitedDate) r.lastVisited = visitedDate;
   r.reasons = reasons;
 
@@ -1167,6 +1570,9 @@ window.saveDetailChanges = function(id) {
 
   saveRestaurants();
   apiSave(r);
+  if (getHomeAddress()) {
+    await recalculateDistances();
+  }
   closeModal();
   if (state.tab === 'history') renderHistory();
   else renderList();
@@ -1286,7 +1692,7 @@ window.handleImportFile = function(input) {
         }
       });
       saveRestaurants();
-      apiBulk(parsed).then(() => showToast(`Synced to server ✓`));
+      if (USE_API) apiBulk(parsed).then(() => showToast('Synced to server ✓'));
       renderList();
       showToast(`Imported: ${added} added, ${updated} updated`);
     } catch (err) {
@@ -1309,45 +1715,64 @@ function lastSheetSync() {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+window.saveHomeAddress = async function() {
+  const input = document.getElementById('home-address-input');
+  const addr = (input?.value || '').trim();
+  localStorage.setItem(HOME_ADDRESS_KEY, addr);
+  showToast(addr ? 'Home address saved' : 'Home address cleared');
+  if (addr && state.restaurants.length > 0) {
+    await recalculateDistances();
+  }
+  renderActiveTab();
+};
+
+window.updateDriveTimes = async function() {
+  await recalculateDistances();
+  renderActiveTab();
+};
+
 window.saveSheetUrl = function() {
   const input = document.getElementById('sheet-url-input');
   const url = (input?.value || '').trim();
   localStorage.setItem(SHEET_URL_KEY, url);
   showToast(url ? 'Sheet link saved' : 'Sheet link cleared');
-  renderList();
+  renderActiveTab();
+};
+
+window.saveSheetWriteBack = function() {
+  const url = (document.getElementById('sheet-write-url-input')?.value || '').trim();
+  const secret = (document.getElementById('sheet-write-secret-input')?.value || '').trim();
+  saveSheetWriteConfig(url, secret);
+  showToast(url && secret ? 'Write-back settings saved' : 'Write-back cleared');
+  renderActiveTab();
 };
 
 window.syncFromSheet = async function() {
   const input = document.getElementById('sheet-url-input');
   const url = (input?.value || getSheetUrl()).trim();
   if (!url) {
-    showToast('Paste a Google Sheet link first');
+    showToast('Paste a Google Sheet link in My List first');
     return;
   }
   localStorage.setItem(SHEET_URL_KEY, url);
   showToast('Syncing from sheet…');
-  const result = await apiCall(`${API_BASE}/sync-sheet`, {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-  });
-  if (!result || result.error) {
-    showToast(result?.error || 'Sync failed — check the link is shared publicly');
+  const result = await syncRestaurantsFromSheetUrl(url);
+  if (result.error) {
+    showToast(result.error);
     return;
   }
   localStorage.setItem(SHEET_SYNC_KEY, String(Date.now()));
-  const fresh = await apiCall(API_BASE);
-  if (Array.isArray(fresh)) {
-    state.restaurants = fresh;
-    saveRestaurants();
-  }
-  renderList();
+  state.restaurants = result.restaurants;
+  state.results = null;
+  saveRestaurants();
+  renderActiveTab();
   showToast(`Synced ${result.synced} restaurants from sheet ✓`);
 };
 
 // ─── CSV Export / Import ────────────────────────────────────────────────────────
 
 const CSV_COLUMNS = [
-  'id', 'name', 'location', 'tier', 'tags', 'acclaimed',
+  'id', 'name', 'location', 'tier', 'address', 'distance', 'driveTimeMin', 'tags', 'reasons',
   'dateSaved', 'lastVisited', 'food', 'vibe', 'service', 'parking', 'cost', 'notes'
 ];
 
@@ -1363,8 +1788,11 @@ function restaurantToRow(r) {
     r.name,
     r.location,
     r.tier,
+    r.address || '',
+    r.distance || '',
+    r.driveTimeMin ?? '',
     (r.tags || []).join('; '),
-    r.acclaimed ? 'TRUE' : 'FALSE',
+    (r.reasons || []).join('; '),
     r.dateSaved || '',
     r.lastVisited || '',
     r.ratings?.food ?? '',
@@ -1403,15 +1831,27 @@ function parseCSV(text) {
 function rowToRestaurant(rowObj, existing) {
   const num = (v) => (v === '' || v === undefined || v === null) ? null : Number(v);
   const boolVal = String(rowObj.acclaimed || '').trim().toUpperCase();
+  const driveTimeMin = rowObj.driveTimeMin !== '' && rowObj.driveTimeMin != null
+    ? num(rowObj.driveTimeMin)
+    : (existing?.driveTimeMin ?? null);
+  let distance = rowObj.distance || existing?.distance || '';
+  if (!distance && driveTimeMin != null) {
+    distance = rowObj.location === 'Norman' ? 'In-town' : bucketFromDriveMinutes(driveTimeMin);
+  }
   return {
-    id: rowObj.id && rowObj.id.trim() ? rowObj.id.trim() : genId(),
-    name: rowObj.name || '',
-    location: rowObj.location || '',
-    tier: rowObj.tier || TIERS[0],
+    id: existing?.id ?? (rowObj.id && rowObj.id.trim() ? rowObj.id.trim() : genId()),
+    name: (rowObj.name || '').trim(),
+    location: rowObj.location || existing?.location || 'OKC - City',
+    tier: rowObj.tier || existing?.tier || TIERS[0],
+    address: rowObj.address || existing?.address || '',
+    distance,
+    driveTimeMin,
     tags: (rowObj.tags || '').split(/[;,]/).map(t => t.trim()).filter(Boolean),
+    reasons: (rowObj.reasons || '').split(/[;,]/).map(t => t.trim()).filter(Boolean),
     acclaimed: boolVal === 'TRUE' || boolVal === 'YES' || boolVal === '1',
     dateSaved: rowObj.dateSaved || existing?.dateSaved || today(),
     lastVisited: rowObj.lastVisited || null,
+    bestSeasons: existing?.bestSeasons ?? [],
     ratings: {
       food: num(rowObj.food),
       vibe: num(rowObj.vibe),
@@ -1421,6 +1861,66 @@ function rowToRestaurant(rowObj, existing) {
     },
     notes: rowObj.notes || '',
   };
+}
+
+function toSheetCsvUrl(input) {
+  const trimmed = input.trim();
+  if (/output=csv|format=csv|\.csv($|\?)/i.test(trimmed)) return trimmed;
+  const idMatch = trimmed.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) return trimmed;
+  const id = idMatch[1];
+  const gidMatch = trimmed.match(/gid=([0-9]+)/);
+  const gid = gidMatch ? gidMatch[1] : '0';
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+
+function restaurantsFromSheetCsv(csvText, existing) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) throw new Error('Sheet has no data rows');
+  const header = rows[0].map(h => h.trim());
+  const dataRows = rows.slice(1);
+  const byId = new Map(existing.map(r => [r.id, r]));
+  const byName = new Map(existing.map(r => [r.name.trim().toLowerCase(), r]));
+  const upserts = [];
+
+  dataRows.forEach(cells => {
+    const rowObj = {};
+    header.forEach((h, i) => { rowObj[h] = cells[i] !== undefined ? cells[i] : ''; });
+    if (!rowObj.name || !rowObj.name.trim()) return;
+
+    const matchedById = rowObj.id && rowObj.id.trim() ? byId.get(rowObj.id.trim()) : undefined;
+    const matchedByName = byName.get(rowObj.name.trim().toLowerCase());
+    const existingRow = matchedById ?? matchedByName;
+    upserts.push(rowToRestaurant(rowObj, existingRow));
+  });
+
+  if (upserts.length === 0) throw new Error('No valid rows found in sheet');
+  return upserts;
+}
+
+async function syncRestaurantsFromSheetUrl(url) {
+  const csvUrl = toSheetCsvUrl(url);
+  let fetchRes;
+  try {
+    fetchRes = await fetch(csvUrl);
+  } catch {
+    return { error: 'Could not fetch sheet. Check your connection or try publishing the sheet to the web.' };
+  }
+  if (!fetchRes.ok) {
+    return {
+      error: `Could not fetch sheet (HTTP ${fetchRes.status}). Make sure it's shared as "Anyone with the link can view".`,
+    };
+  }
+  try {
+    const csvText = await fetchRes.text();
+    const upserts = restaurantsFromSheetCsv(csvText, state.restaurants);
+    const byId = new Map(state.restaurants.map(r => [r.id, r]));
+    upserts.forEach(r => byId.set(r.id, r));
+    const merged = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return { synced: upserts.length, restaurants: merged };
+  } catch (err) {
+    return { error: err.message || 'Failed to parse sheet' };
+  }
 }
 
 window.exportCSV = function() {
@@ -1478,7 +1978,7 @@ window.handleImportCSVFile = function(input) {
       });
 
       saveRestaurants();
-      apiBulk(parsedList).then(() => showToast(`Synced to server ✓`));
+      if (USE_API) apiBulk(parsedList).then(() => showToast('Synced to server ✓'));
       renderList();
       showToast(`Imported: ${added} added, ${updated} updated`);
     } catch (err) {
@@ -1536,21 +2036,32 @@ async function init() {
       <div style="font-size:14px;color:#8E8E93;">Loading your list…</div>
     </div>`;
 
-  const rows = await apiCall(API_BASE);
-
-  if (rows && rows.length > 0) {
-    state.restaurants = rows;
-    saveRestaurants();
-  } else if (rows && rows.length === 0) {
-    // First run — seed the database
-    state.restaurants = JSON.parse(JSON.stringify(SEED_RESTAURANTS));
-    saveRestaurants();
-    await apiBulk(state.restaurants);
+  if (USE_API) {
+    const rows = await apiCall(API_BASE);
+    if (rows && rows.length > 0) {
+      state.restaurants = rows;
+      saveRestaurants();
+    } else if (rows && rows.length === 0) {
+      state.restaurants = JSON.parse(JSON.stringify(SEED_RESTAURANTS));
+      saveRestaurants();
+      await apiBulk(state.restaurants);
+    } else {
+      state.restaurants = loadRestaurantsLocal();
+    }
   } else {
-    // API unreachable — fall back to local cache
     state.restaurants = loadRestaurantsLocal();
+    const sheetUrl = getSheetUrl();
+    if (state.restaurants.length === 0 && sheetUrl) {
+      const result = await syncRestaurantsFromSheetUrl(sheetUrl);
+      if (result.restaurants) {
+        state.restaurants = result.restaurants;
+        saveRestaurants();
+        localStorage.setItem(SHEET_SYNC_KEY, String(Date.now()));
+      }
+    }
   }
 
+  applyGeoCacheToRestaurants();
   renderDiscover();
 }
 

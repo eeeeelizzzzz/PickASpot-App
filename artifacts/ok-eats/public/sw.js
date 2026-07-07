@@ -1,9 +1,13 @@
-const CACHE = 'ok-eats-v1';
-const PRECACHE = ['/', '/src/app.js'];
+const CACHE = 'ok-eats-v2';
+const PRECACHE = ['index.html', 'src/app.js', 'icon.jpg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).catch(() => {})
+    caches.open(CACHE).then(c =>
+      Promise.all(
+        PRECACHE.map(p => c.add(new URL(p, self.location).href).catch(() => {}))
+      )
+    )
   );
   self.skipWaiting();
 });

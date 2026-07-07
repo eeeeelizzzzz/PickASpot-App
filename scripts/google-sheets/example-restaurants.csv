@@ -1,0 +1,4 @@
+id,name,location,tier,tags,reasons,address,distance,driveTimeMin,dateSaved,lastVisited,food,vibe,service,parking,cost,notes
+r001,The Montford Norman,Norman,3: Elevated / Sit-Down,New American; Patio / Outdoor,Favorite,,,,2025-01-10,,,,,,,Example row — replace with your restaurants
+r002,Tucker's Onion Burgers,OKC - City,2: Casual / Takeout,Burgers; Drive-thru,Classic / Staple,,,,2025-01-10,,,,,,,
+r003,Benvenuti's,Norman,3: Elevated / Sit-Down,Italian; Takes Reservations,Personal Recommendation,,,,2025-01-10,2025-02-14,5,4,5,Easy,$$$,Anniversary spot

@@ -257,6 +257,7 @@ router.post("/restaurants/sync-sheet", async (req, res) => {
         name: obj.name.trim(),
         location: obj.location || existingRow?.location || "OKC - City",
         tier: obj.tier || existingRow?.tier || "1: Delivery / Couch Meal",
+        address: obj.address || existingRow?.address || "",
         distance: obj.distance || existingRow?.distance || "",
         tags: (obj.tags || "").split(/[;,]/).map((t) => t.trim()).filter(Boolean),
         reasons: (obj.reasons || "").split(/[;,]/).map((t) => t.trim()).filter(Boolean),
