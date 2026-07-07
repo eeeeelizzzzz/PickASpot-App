@@ -1018,6 +1018,18 @@ function renderHelp() {
     </div>
 
     <div style="padding:0 20px 32px;">
+      ${helpSection('Add to home screen', `
+        <p style="margin:0 0 10px;">Install Pick A Spot like an app — no App Store. Open this page in your browser first, then:</p>
+        <ul style="margin:0;padding-left:1.2em;">
+          <li style="margin-bottom:8px;"><strong>iPhone / iPad:</strong> Use <strong>Safari</strong> → <strong>Share</strong> (□↑) → <strong>Add to Home Screen</strong> → <strong>Add</strong>.</li>
+          <li style="margin-bottom:8px;"><strong>Android:</strong> <strong>Chrome</strong> → <strong>⋮</strong> menu → <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+          <li><strong>Desktop:</strong> Chrome or Edge → <strong>Install</strong> in the address bar, or browser menu → install.</li>
+        </ul>
+        <p style="margin:12px 0 0;color:#8E8E93;font-size:13px;">
+          Your restaurant list and Settings stay on this device in the browser. The home-screen icon opens the same saved data.
+        </p>
+      `)}
+
       ${helpSection('Pick a restaurant', `
         <ol style="margin:0;padding-left:1.2em;">
           <li style="margin-bottom:8px;">On <strong>Discover</strong>, set filters (location, distance, tags, reasons).</li>

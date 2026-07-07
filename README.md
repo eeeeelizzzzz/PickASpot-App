@@ -30,7 +30,17 @@ I started the first version on [Replit](https://replit.com/) from my phone, in m
 | **Settings** | [Google Sheet sync](#how-sync-works), [save to sheet](#how-sync-works), import/export — see [Google Sheet setup](#google-sheet-setup) |
 | **How To** | In-app setup guide (or this README's [Getting started](#getting-started)) |
 
-Add to your home screen for a standalone PWA (`manifest.json` + service worker).
+### Add to home screen
+
+Pick A Spot is a PWA — install it like an app (no App Store):
+
+| Device | Steps |
+|--------|--------|
+| **iPhone / iPad** | Open the [live app](https://eeeeelizzzzz.github.io/PickASpot-App/) in **Safari** → **Share** (□↑) → **Add to Home Screen** → **Add** |
+| **Android** | Open in **Chrome** → **⋮** menu → **Install app** or **Add to Home screen** |
+| **Desktop** | Chrome or Edge → **Install** icon in the address bar, or browser menu → **Install Pick A Spot** |
+
+Use **Safari** on iOS (other browsers may not offer Add to Home Screen). Your list and Settings are stored on that device in the browser — the home-screen icon opens the same saved data.
 
 ### How picks work (short version)
 
@@ -40,7 +50,7 @@ Add to your home screen for a standalone PWA (`manifest.json` + service worker).
 
 ## Getting started
 
-You do **not** have to fork this repo to use the app. Open the [live app](https://eeeeelizzzzz.github.io/PickASpot-App/) and choose a path:
+You do **not** have to fork this repo to use the app. Open the [live app](https://eeeeelizzzzz.github.io/PickASpot-App/) and choose a path. Optional: [add it to your home screen](#add-to-home-screen) first so it opens full-screen like a native app.
 
 ### Recommended: Google Sheet
 
